@@ -67,6 +67,22 @@ Let $\mathcal{F} = \{1, \dots, n\}$ be the finite set of Boolean features, parti
 | **P6** | Looseness of $\mathcal{C}$ on $\mathcal{P}$ | Def. 22, Prop. 31 | $\forall X\exists Z\ \neg\Phi_{\text{3-DNF}}$ | **$\Pi_2^P$-complete** | `verify_pi2p.v`<br>`looseness_pi2p_equiv` | **0 axioms (constructive)** |
 | **P7** | Disentangledness of $\kappa$ | Def. 25, Prop. 31 | $\forall X\exists Z\ \neg\Phi_{\text{3-DNF}}$ | **$\Pi_2^P$-complete** | `verify_pi2p.v`<br>`disentangled_pi2p_equiv` | **0 axioms (constructive)** |
 
+### 2.1 Design Roadmap: Why Every Gadget Exists
+
+Rather than an ad-hoc collection of constraints, the four reductions evolve along a single progression from **2-QBF (single layer)** $\to$ **3-QBF (two-layer single decision)** $\to$ **3-QBF (all-instance universal)** $\to$ **4-QBF (all-instance existential)**, where each auxiliary feature plays an indispensable role:
+
+1. **P6 / P7 (Selector $d$ + Protected Shield $p^*$)**:  
+   $\Pi_2^P$ requires only $\mathcal{N}$ to hold $X$ and $\mathcal{P}$ to hold $Z$. Adding $d \in \mathcal{N}$ creates an unconstrained $d=0$ region so that whenever $\forall Z\ \Phi(X,Z)=1$ forces $p^*=1$, the point $(d=0, X, p^*=1, \vec{0})$ immediately witnesses strict subsumption (letting P6 and P7 share the same pure 5-CNF constraint).
+2. **P1 / P2 / P3 (Dual-Rail Encoding + $(d,p)$ Two-Layer Gate)**:  
+   - *Why dual-rail $X, Y$ vs. single-rail $Z$?* Under Definition 3, an explanation $S \subseteq \mathcal{F}$ can only assert "$i$ agrees with $x^*_i$" and cannot directly express negative literals. Setting $x^*=\vec{1}$ forces every variable whose $0/1$ assignment must be chosen by an explanation ($W, X, Y$) to use a positive/negative pair $(V_i^+, V_i^-)$, whereas the innermost $\exists Z$ is never fixed by an explanation and remains single-rail.
+   - *Why $(d, p)$?* Since $x^*=\vec{1}$ is all-$1$, if $(d=0, \vec{1})$ were valid with $\kappa=0$, no subset $T$ dropping $d$ could avoid it; conversely, forbidding $(d=0, \vec{1})$ would let $S$ omit $d$. Adding one gate bit $p$ with $(d=0, p=0, \vec{1})$ valid and $\kappa=0$ achieves both goals simultaneously: fair $S$ must include $d$, while unfair jumps can carry $p=1$ safely into the lower layer's unique-encoding zone. P1 and P2/P3 use the exact same construction with $\mathcal{N}$ and $\mathcal{P}$ swapped.
+3. **P3 $\to$ P5 (From Single-Decision to All-Instance: `not11` + $(0,0)$-Absorbing State)**:  
+   P5 quantifies over *every* $x \in \mathbb{F}[\mathcal{C}]$. Reusing P3 directly fails in the lower layer ($d=0,p=1$) because mutual exclusion $Y_j^+ \oplus Y_j^- = 1$ makes $Y_j^+=1$ and $Y_j^-=0$ tie in coverage. Relaxing to no-double-$1$ (`x_not11` $\land$ `y_not11`) with $(0,0)$ absorbing to $\kappa=0$ (semantically equivalent to $x\_ok \land y\_ok \land \neg\Phi$) ensures dualizing literals strictly gains $(0,0)$, breaking all lower-layer ties, while `all_Y` on $d=1$ gives Constrained FTU for free.
+4. **P1 $\to$ P4 (Four Quantifiers & Bidirectional Jumps: Looseness Shield + $q_B$ + $z_0$)**:  
+   - *Why the Looseness Shield ($\mathcal{P}=\{p^*\}$, `is_phi` independent of $p^*$)?* It makes the lower $\Phi$-region immune to reverse subsumption from upper-layer jumps, while $\kappa_{P4}$ omitting $p^*$ guarantees Constrained FTU unconditionally.
+   - *Why $q_B$?* Across $\mathbb{F}[\mathcal{C}_{P4}]$, $q_B$ acts as the exact Boolean indicator $[d \land w\_ok \land x\_ok \land \neg(w\_uniq \land all\_X)]$ for "upper-layer non-target $\kappa=1$ points": it isolates all non-target $\kappa=1$ points via the singleton explanation $\{q_B\}$, while keeping non-target combinations valid around $x_W$ so an unfair $T$ cannot sneak unselected $X_i^-=1$ rails into $T$ to block the lower-layer jump.
+   - *Why `is_dummy` and $z_0$?* `is_dummy` ($d=0, p^*=0$) forces fair explanations at $x_W$ to include $d$. Since `is_phi` also allows $p^*=0$, whenever $\Phi \equiv \text{True}$ makes $\neg\Phi=0$ everywhere on `is_phi`, $z_0=0$ ($\kappa=1$) provides an unconditional $\Phi$-independent refutation that blocks unfair jumps out of `is_dummy` and $d=1, \neg x\_ok$.
+
 ---
 
 ## 3. $\Pi_2^P$-Completeness of P6 (Looseness) and P7 (Disentangledness)

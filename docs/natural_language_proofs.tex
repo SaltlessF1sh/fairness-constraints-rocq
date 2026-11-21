@@ -108,6 +108,15 @@ P7 & 分类器解耦性判定 & Def 25, P31 & $\forall X\exists Z\ \neg\Phi_{\te
 \end{tabular}
 \end{center}
 
+\subsection{归约设计演进图：为什么需要每个构造部件（Why Every Gadget Exists）}
+上述构造沿着\textbf{“2-QBF 单层 $\to$ 3-QBF 单决策分层 $\to$ 3-QBF 全实例 $\to$ 4-QBF 全实例”}四步自然演化，每个辅助特征均不可替代：
+\begin{enumerate}
+  \item \textbf{P6/P7（门控 $d$ + 护盾 $p^*$）}：$\N$ 锁定 $X$、$\Prot$ 承载 $Z$，门控 $d=0$ 构造无约束自由区，使 $\forall Z\;\Phi=1$ 强制 $p^*=1$ 时立得严格包含（纯 5-CNF + 单特征投影）。
+  \item \textbf{P1/P2/P3（双轨编码 + $(d,p)$ 分层）}：因 Def 3 子集解释只能断言“取 $x^*$ 同值”，在 $x^*=\vec{1}$ 下，需由解释选值的变量（$W,X,Y$）必须拆成正负双轨 $(V_i^+,V_i^-)$，而最内层 $\exists Z$ 保持单轨；辅助位 $p$ 提供 $(d=0,p=0,\vec{1})$（$\kappa=0$）迫使上层解释必含 $d$，同时允许携带 $p=1$ 的跳转安全进入下层互斥验证区。
+  \item \textbf{P3 $\to$ P5（从单决策到全实例：\code{not11} + $(0,0)$-吸收态）}：P5 需覆盖所有有效点，若下层沿用互斥编码 $Y_j^+ \oplus Y_j^-=1$ 会造成 $Y_j^+=1$ 与 $Y_j^-=0$ 覆盖平局；改用禁止双 $1$ 约束与 $(0,0)$-吸收态（即 $x\_ok \land y\_ok \land \neg\Phi$）可打破全部下层平局，且 $d=1$ 强制 \code{all\_Y} 免费保证 Constrained FTU。
+  \item \textbf{P1 $\to$ P4（四重量词与双向跳跃：松弛护盾 + $q_B$ + $z_0$）}：设唯一受保护特征 $\Prot=\{p^*\}$ 且下层 \code{is\_phi} 对 $p^*$ 自由（松弛护盾），免疫上层反向吞并且无条件保 FTU；全局指示位 $q_B \equiv [d \land w\_ok \land x\_ok \land \neg(w\_uniq \land all\_X)]$ 一方面隔离上层非目标 $\kappa=1$ 区域（直接由 $\{q_B\}$ 解决），另一方面释放目标点 $x_W$ 处的未选中轨以防不公平集偷夹残余文字；\code{is\_dummy} 锁定目标族的 $d$，而 $z_0=0$（$\kappa=1$）则在 $\Phi \equiv \mathrm{True}$ 等情形下为 \code{is\_dummy} 与 $d=1, \neg x\_ok$ 阻断跨区不公平吞并。
+\end{enumerate}
+
 \section{P6（松弛性）与 P7（解耦性）的 \texorpdfstring{$\Pi_2^P$}{Pi\_2\^{}P}-完全性证明}
 对应 Rocq 文件：\code{rocq\_proofs/verify\_pi2p.v}（定理 \code{looseness\_pi2p\_equiv} 与 \code{disentangled\_pi2p\_equiv}，完全构造性、0 公理）。
 

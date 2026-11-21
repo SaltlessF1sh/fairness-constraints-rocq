@@ -107,6 +107,15 @@ P7 & Disentangledness & Def 25, P31 & $\forall X\exists Z\ \neg\Phi_{\text{3-DNF
 \end{tabular}
 \end{center}
 
+\subsection{Design Roadmap: Why Every Gadget Exists}
+Rather than an ad-hoc collection of constraints, the four reductions evolve along a single progression from \textbf{2-QBF (single layer)} $\to$ \textbf{3-QBF (two-layer single decision)} $\to$ \textbf{3-QBF (all-instance universal)} $\to$ \textbf{4-QBF (all-instance existential)}:
+\begin{enumerate}
+  \item \textbf{P6 / P7 (Selector $d$ + Shield $p^*$)}: $\N$ holds $X$ and $\Prot$ holds $Z$; $d=0$ creates an unconstrained free zone so that whenever $\forall Z\;\Phi=1$ forces $p^*=1$, $(d=0, X, p^*=1, \vec{0})$ immediately witnesses strict subsumption (pure 5-CNF + single-feature projection).
+  \item \textbf{P1 / P2 / P3 (Dual-Rail Encoding + $(d,p)$ Gate)}: Under Def.~3, a subset explanation $S \subseteq \mathcal{F}$ can only fix features to their values in $x^*$. Setting $x^*=\vec{1}$ forces every variable chosen by an explanation ($W,X,Y$) to use dual rails $(V_i^+,V_i^-)$, while innermost $\exists Z$ remains single-rail. The bit $p$ makes $(d=0,p=0,\vec{1})$ valid ($\kappa=0$), simultaneously forcing upper-layer explanations to include $d$ while letting unfair jumps carry $p=1$ into the lower unique-encoding layer.
+  \item \textbf{P3 $\to$ P5 (Single-Decision to All-Instance: \code{not11} + $(0,0)$-Absorbing State)}: Reusing P3 directly fails on $d=0,p=1$ because $Y_j^+ \oplus Y_j^-=1$ makes $Y_j^+=1$ and $Y_j^-=0$ tie in coverage. Relaxing to no-double-$1$ with $(0,0)$ absorbing to $\kappa=0$ (equivalent to $x\_ok \land y\_ok \land \neg\Phi$) breaks all lower-layer ties, while \code{all\_Y} on $d=1$ yields Constrained FTU for free.
+  \item \textbf{P1 $\to$ P4 (Four Quantifiers \& Bidirectional Jumps: Looseness Shield + $q_B$ + $z_0$)}: Setting $\Prot=\{p^*\}$ with \code{is\_phi} independent of $p^*$ (Looseness Shield) blocks reverse subsumption from upper-layer jumps and ensures Constrained FTU unconditionally. The bit $q_B \equiv [d \land w\_ok \land x\_ok \land \neg(w\_uniq \land all\_X)]$ acts as an indicator for upper-layer non-target $\kappa=1$ points, isolating them via $\{q_B\}$ while freeing unselected rails around $x_W$. Finally, \code{is\_dummy} locks $d$ at $x_W$, while $z_0=0$ ($\kappa=1$) prevents cross-region unfair subsumption out of \code{is\_dummy} and $d=1,\neg x\_ok$ even when $\Phi \equiv \mathrm{True}$.
+\end{enumerate}
+
 \section{\texorpdfstring{$\Pi_2^P$}{Pi\_2\^{}P}-Completeness of P6 (Looseness) and P7 (Disentangledness)}
 Rocq file: \code{rocq\_proofs/verify\_pi2p.v} (\code{looseness\_pi2p\_equiv}, \code{disentangled\_pi2p\_equiv}; constructive, 0 axioms).
 
