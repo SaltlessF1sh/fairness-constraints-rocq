@@ -1,0 +1,27 @@
+# Rocq / Coq build artifacts
+*.vo
+*.vok
+*.vos
+*.glob
+.*.aux
+*.aux
+.lia.cache
+Makefile
+Makefile.conf
+
+# LaTeX build artifacts
+*.log
+*.out
+*.toc
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local reference materials, empirical tests & temporary aggregates (excluded from public repo)
+paper/
+python_tests/
+rocq_proofs/all_rocq_proofs.txt

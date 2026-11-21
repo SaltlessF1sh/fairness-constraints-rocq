@@ -1,0 +1,304 @@
+% !TEX program = xelatex
+\documentclass[11pt,a4paper]{article}
+\usepackage{xeCJK}
+\setCJKmainfont{Microsoft YaHei}
+\setCJKsansfont{Microsoft YaHei}
+\setCJKmonofont{Consolas}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{geometry}
+\geometry{margin=2.1cm}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+\setlist[itemize]{itemsep=2pt,topsep=3pt,parsep=1pt}
+\setlist[enumerate]{itemsep=2pt,topsep=3pt,parsep=1pt}
+
+\newtheorem{theorem}{定理}[section]
+\newtheorem{lemma}[theorem]{引理}
+
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\C}{\mathcal{C}}
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\Prot}{\mathcal{P}}
+\newcommand{\cov}{\operatorname{cov}}
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+\title{\textbf{特征约束下分类器公平性（P1--P7）完整自然语言数学证明}\\
+\large Rocq 源码对齐修订版（严格一一对应 5 份无 \code{Admitted} 的 Rocq 9.0 形式化证明）}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent\fbox{\parbox{0.97\textwidth}{
+本文档完整证明 \textbf{Cooper \& Bousdira (CP 2026)} \emph{《Fairness of Classifiers in the Presence of Constraints Between Features》} 第 6--7 节（Propositions 27, 28, 31）遗留的全部 \textbf{7 个复杂度下界开放问题（P1--P7）}。所有核心等价定理与引理均已与 5 份 \textbf{Rocq (Coq 9.0)} 机械形式化验证文件（0 \code{Admitted}、0 自定义公理）严格一一对应。
+}}
+
+\tableofcontents
+\vspace{0.6em}
+
+\section{形式化预备知识与核心定义}
+
+\subsection{基本设定与计算模型}
+设布尔特征全集为 $\mathcal{F} = \{1, \dots, n\}$，划分为互不相交的\textbf{非保护特征集} $\N$ 与\textbf{受保护（敏感）特征集} $\Prot$（$\mathcal{F} = \N \cup \Prot$，$\N \cap \Prot = \emptyset$）。特征空间为有限布尔超立方体 $\F = \{0, 1\}^n$。
+
+\begin{itemize}
+  \item \textbf{特征约束与有效实例空间}：多项式时间可判定的布尔公式/电路 $\C : \F \to \{0, 1\}$ 定义了有效实例空间 $\F[\C] = \{x \in \F \mid \C(x) = 1\}$。
+  \item \textbf{分类器}：多项式时间可计算的布尔函数 $\kappa : \F \to \{0, 1\}$（遵循原论文第 7 节第 12--13 页设定）。
+  \begin{itemize}
+    \item \emph{表示强度说明}：本文对 \textbf{P1--P5} 构造的 $(\C, \kappa)$ 为多项式规模布尔公式/电路；对 \textbf{P6--P7} 构造的 $\C_{\mathrm{red}}$ 直接是多项式规模的\textbf{纯 5-CNF 公式}，$\kappa_d$ 仅为\textbf{单特征投影分类器}（深度为 1 的决策树）。
+    \item \emph{与 Rocq 有限域编码的对应}：在 Rocq 源码中，向量坐标虽采用 \code{nat -> bool}，但所有定理均带有 \code{cnf\_bounded} / \code{dnf\_bounded} 有界前提，且所有谓词仅读取有限前缀坐标，因此与有限超立方体 $\{0,1\}^N$ 严格同构。
+  \end{itemize}
+\end{itemize}
+
+\subsection{解释与公平性定义（对齐 Cooper \& Bousdira, CP 2026）}
+\begin{enumerate}
+  \item \textbf{覆盖集（Coverage，原论文 Section 2 第 3 页）}：对有效实例 $x \in \F[\C]$ 与特征子集 $S \subseteq \mathcal{F}$，定义 $S$ 在 $x$ 处的覆盖集为
+  \[
+    \cov_S(x) = \{y \in \F[\C] \mid \forall i \in S,\ y_i = x_i\}.
+  \]
+  \item \textbf{弱溯因解释（Weak AXp）与溯因解释（AXp，Definition 3）}：
+  $S \subseteq \mathcal{F}$ 是 $\langle \kappa, x \rangle$ 的 \textbf{Weak AXp}，若 $\forall y \in \cov_S(x),\ \kappa(y) = \kappa(x)$；$S$ 是 \textbf{AXp}，若 $S$ 是关于 $\subseteq$ 极小的 Weak AXp。
+  \item \textbf{严格包含与主蕴涵解释（PI-explanation，Definition 4）}：
+  称 $T \subseteq \mathcal{F}$ 在 $x$ 处\textbf{严格包含} $S \subseteq \mathcal{F}$（记作 $\cov_S(x) \subsetneq \cov_T(x)$），若 $\cov_S(x) \subseteq \cov_T(x)$ 且存在 $v \in \cov_T(x) \setminus \cov_S(x)$。$S$ 是 \textbf{PI-explanation}，若 $S$ 是 AXp 且不存在任何 AXp $T$ 在 $x$ 处严格包含 $S$。
+  \item \textbf{单决策公平性（Definition 5）}：
+  $S \subseteq \mathcal{F}$ 是\textbf{公平的}，若 $S \cap \Prot = \emptyset$（即 $S \subseteq \N$）；否则称\textbf{不公平的}。\textbf{P1}（决策存在性公平）：存在至少一个公平 PI-explanation；\textbf{P2}（不公平 PI-解释存在性）：存在至少一个不公平 PI-explanation；\textbf{P3}（决策普遍性公平）：所有 PI-explanation 均公平（P2 的补问题）。
+  \item \textbf{分类器整体公平性（Definitions 14 \& 15）}：
+  \textbf{Constrained FTU}（Def 14）：$\forall u, v \in \F[\C],\ u|_{\N} = v|_{\N} \implies \kappa(u) = \kappa(v)$。\textbf{P4}（分类器存在性公平，Def 15）：$\forall x \in \F[\C]$，$\langle \kappa, x \rangle$ 存在公平 PI-explanation。\textbf{P5}（分类器普遍性公平，Def 15）：$\forall x \in \F[\C]$，$\langle \kappa, x \rangle$ 的所有 PI-explanation 均公平。
+  \item \textbf{约束松弛性与分类器解耦性（Definitions 22 \& 25）}：
+  \textbf{松弛性}（P6，Def 22）：$\forall x \in \F[\C],\ \forall p \in \Prot$，$\cov_{\N}(x) \not\subsetneq \cov_{\{p\}}(x)$。\textbf{解耦性}（P7，Def 25）：$\forall x \in \F[\C]$，$\N$ 是 $\langle \kappa, x \rangle$ 的 Weak AXp，且不被任何不公平 Weak AXp $Q$ 严格包含。
+\end{enumerate}
+
+\subsection{关键桥接引理}
+\begin{lemma}[Weak AXp 覆盖极大性刻画]
+\noindent\emph{对应 Rocq：\code{weak\_axp\_has\_axp}、\code{weak\_fair\_to\_pi\_fair} / \code{dec\_exist\_fair\_at\_to\_pi}}。\\
+在有限特征集 $\mathcal{F}$ 上，对任意有效实例 $x \in \F[\C]$：
+\begin{enumerate}
+  \item 若 $S$ 是 Weak AXp，则存在 AXp $S' \subseteq S$ 满足 $\cov_S(x) \subseteq \cov_{S'}(x)$；
+  \item $\langle \kappa, x \rangle$ 存在公平的 PI-explanation，当且仅当\textbf{存在公平 Weak AXp $S \subseteq \N$，不被任何不公平 Weak AXp $T$（$T \cap \Prot \neq \emptyset$）严格包含}。
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+(1) 因 $\mathcal{F}$ 有限，对 $|S|$ 施归纳，若 $S$ 非极小则取真子集 Weak AXp 递降即得，且 $S' \subseteq S \implies \cov_S(x) \subseteq \cov_{S'}(x)$。\\
+(2) ($\Rightarrow$) 若 $S \subseteq \N$ 是公平 PI-explanation，它必是公平 Weak AXp；若存在不公平 Weak AXp $T$ 满足 $\cov_S(x) \subsetneq \cov_T(x)$，由 (1) 取 AXp $T' \subseteq T$，则 $\cov_S(x) \subsetneq \cov_T(x) \subseteq \cov_{T'}(x)$，与 $S$ 是 PI-explanation 矛盾。\\
+($\Leftarrow$) 设公平 Weak AXp $S \subseteq \N$ 不被任何不公平 Weak AXp 严格包含。在有限空间 $\F[\C]$ 中，取所有满足 $\cov_S(x) \subseteq \cov_{\hat{S}}(x)$ 的公平 Weak AXp $\hat{S} \subseteq \N$ 中覆盖集基数 $|\cov_{S^*}(x)|$ 极大者 $S^*$，再由 (1) 取 AXp $S' \subseteq S^* \subseteq \N$。因 $\cov_{S^*}(x) \subseteq \cov_{S'}(x)$ 且 $S^*$ 极大，必有 $\cov_{S'}(x) = \cov_{S^*}(x) \supseteq \cov_S(x)$。于是 $S'$ 既不能被任何公平 AXp 严格包含（违背 $S^*$ 极大性），也不能被任何不公平 AXp $T$ 严格包含（否则 $\cov_S(x) \subseteq \cov_{S'}(x) \subsetneq \cov_T(x)$，违背对 $S$ 的假设）。故 $S'$ 是公平 PI-explanation。
+\end{proof}
+
+\section{七大问题（P1--P7）复杂度全景总表}
+
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}>{\bfseries}c p{2.2cm} l p{2.9cm} c p{4.6cm} p{2.0cm}@{}}
+\toprule
+编号 & 问题名称 & 论文出处 & 归约源问题 & 精确复杂度 & Rocq 文件与核心定理 & 公理依赖 \\
+\midrule
+P1 & 决策存在性公平 & Def 5, P27 & $\exists X\forall Y\exists Z\ \Phi_{\text{3-CNF}}$ & $\Sigma_3^P$-comp. & \code{verify\_p1.v} (\code{p1\_sigma3p\_equiv\_literal}) & 标准排中律 \\
+P2 & 不公平 PI-解释存在 & Def 4--5, P27 & $\exists X\forall Y\exists Z\ \Phi_{\text{3-CNF}}$ & $\Sigma_3^P$-comp. & \code{verify\_p2\_p3.v} (\code{p2\_sigma3p\_equiv}) & 标准排中律 \\
+P3 & 决策普遍性公平 & Def 5, P27 & $\forall X\exists Y\forall Z\ \neg\Phi_{\text{3-CNF}}$ & $\Pi_3^P$-comp. & \code{verify\_p2\_p3.v} (\code{p3\_pi3p\_equiv}) & 标准排中律 \\
+P4 & 分类器存在性公平 & Def 15, P28 & $\forall W\exists X\forall Y\exists Z\ \Phi_{\text{3-CNF}}$ & $\Pi_4^P$-comp. & \code{verify\_p4.v} (\code{p4\_pi4p\_equiv\_literal}) & 排中律 (\code{ftu} 0 公理) \\
+P5 & 分类器普遍性公平 & Def 15, P28 & $\forall X\exists Y\forall Z\ \neg\Phi_{\text{3-CNF}}$ & $\Pi_3^P$-comp. & \code{verify\_p5.v} (\code{p5\_pi3p\_equiv}) & 排中律 (\code{ftu} 0 公理) \\
+P6 & 约束松弛性判定 & Def 22, P31 & $\forall X\exists Z\ \neg\Phi_{\text{3-DNF}}$ & $\Pi_2^P$-comp. & \code{verify\_pi2p.v} (\code{looseness\_pi2p\_equiv}) & \textbf{0 公理} \\
+P7 & 分类器解耦性判定 & Def 25, P31 & $\forall X\exists Z\ \neg\Phi_{\text{3-DNF}}$ & $\Pi_2^P$-comp. & \code{verify\_pi2p.v} (\code{disentangled\_pi2p\_equiv}) & \textbf{0 公理} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{P6（松弛性）与 P7（解耦性）的 \texorpdfstring{$\Pi_2^P$}{Pi\_2\^{}P}-完全性证明}
+对应 Rocq 文件：\code{rocq\_proofs/verify\_pi2p.v}（定理 \code{looseness\_pi2p\_equiv} 与 \code{disentangled\_pi2p\_equiv}，完全构造性、0 公理）。
+
+\textbf{核心直觉}：在松弛性（Def 22）中，阻断 $\{p^*\}$ 严格包含 $\N$ 允许\textbf{同步调整其余受保护特征 $Z \in \Prot\setminus\{p^*\}$} 以维持约束成立。将 2-QBF 的外层变量 $X$ 放入 $\N$、内层变量 $Z$ 放入 $\Prot$，再加门控特征 $d \in \N$ 使 $d=0$ 为无约束自由区，即可用单一纯 5-CNF 同时归约 P6 与 P7。
+
+\begin{theorem}[P6 与 P7 是 $\Pi_2^P$-complete]
+判定约束松弛性（P6）与分类器解耦性（P7）均是 $\Pi_2^P$-complete（即使约束限制为多项式规模纯 5-CNF、分类器限制为单特征投影）。
+\end{theorem}
+\begin{proof}
+\textbf{归约构造}：给定 3-DNF 公式 $\Phi_{\mathrm{DNF}}(X, Z)$（变量 $X \in \{0,1\}^r, Z \in \{0,1\}^s$，$r \ge 1$），从 $\Pi_2\text{SAT}$ 的对偶形式 $\forall X\exists Z\;\neg\Phi_{\mathrm{DNF}}(X,Z)=1$ 归约（$\neg\Phi_{\mathrm{DNF}}$ 为多项式规模 3-CNF）。令 $\N = \{d, X_0, \dots, X_{r-1}\}$，$\Prot = \{p^*, Z_0, \dots, Z_{s-1}\}$，定义：
+\[
+  \C_{\mathrm{red}}(d, X, p^*, Z) \equiv (\neg d) \lor p^* \lor \neg\Phi_{\mathrm{DNF}}(X, Z), \qquad \kappa_d(d, X, p^*, Z) = d.
+\]
+上界 $\mathrm{P6, P7} \in \Pi_2^P$ 见原论文 Proposition 31。
+
+\textbf{一、P6（松弛性）双向等价性}：
+\begin{itemize}
+  \item \textbf{($\Rightarrow$) 假设 $\forall X\exists Z\;\neg\Phi_{\mathrm{DNF}}(X,Z)=1$}：任取 $x \in \F[\C_{\mathrm{red}}]$ 与 $p \in \Prot$，只需构造 $z \in \F[\C_{\mathrm{red}}]$ 使 $z|_{\N}=x|_{\N}$ 且 $z_p \ne x_p$：
+  (1) 若 $d(x)=0$，直接翻转 $p$ 仍满足 $\C_{\mathrm{red}}$；
+  (2) 若 $d(x)=1, p=Z_j$，令 $z=(d=1, X(x), p^*=1, Z(x)[Z_j:=\neg Z_j(x)])$（因 $p^*=1$ 有效）；
+  (3) 若 $d(x)=1, p=p^*$：当 $p^*(x)=0$ 时置 $p^*=1$；当 $p^*(x)=1$ 时由前提取使 $\neg\Phi_{\mathrm{DNF}}(X(x), Z)=1$ 的 $Z$ 并置 $p^*=0$。故 $\{p\}$ 绝不严格包含 $\N$。
+  \item \textbf{($\Leftarrow$) 假设存在 $X$ 使 $\forall Z\;\Phi_{\mathrm{DNF}}(X,Z)=1$}：取 $x = (d=1, X, p^*=1, \vec{0}) \in \F[\C_{\mathrm{red}}]$。任何 $z \in \cov_{\N}(x)$ 均有 $d(z)=1, X(z)=X$，从而 $\neg\Phi_{\mathrm{DNF}}(X,Z(z))=0 \implies p^*(z)=1=p^*(x)$，即 $\cov_{\N}(x) \subseteq \cov_{\{p^*\}}(x)$；而 $y=(d=0, X, p^*=1, \vec{0}) \in \cov_{\{p^*\}}(x) \setminus \cov_{\N}(x)$。故 $\C_{\mathrm{red}}$ 不松弛。
+\end{itemize}
+
+\textbf{二、P7（解耦性）双向等价性（$r \ge 1$）}：因 $\kappa_d(w)=d(w)$ 且 $d \in \N$，$\N$ 自动是每个有效实例的 Weak AXp。
+\begin{itemize}
+  \item \textbf{($\Rightarrow$)} 若存在不公平 Weak AXp $Q$ 在某 $x$ 处严格包含 $\N$，任取 $p \in Q \cap \Prot$，则 $\cov_{\N}(x) \subsetneq \cov_Q(x) \subseteq \cov_{\{p\}}(x)$，与 P6 矛盾。
+  \item \textbf{($\Leftarrow$)} 取上述 $x=(d=1, X, p^*=1, \vec{0})$ 与不公平集 $Q=\{d, p^*\}$。$Q$ 因 $d \in Q$ 为 Weak AXp，且任何 $z \in \cov_{\N}(x)$ 必有 $d(z)=1, p^*(z)=1 \implies \cov_{\N}(x) \subseteq \cov_Q(x)$；因 $r \ge 1$，有效点 $y=(d=1, X[X_0:=\neg X_0], p^*=1, \vec{0}) \in \cov_Q(x) \setminus \cov_{\N}(x)$。故 $\kappa_d$ 不解耦。
+\end{itemize}
+\end{proof}
+
+\section{P1（决策存在性公平）的 \texorpdfstring{$\Sigma_3^P$}{Sigma\_3\^{}P}-完全性证明}
+对应 Rocq 文件：\code{rocq\_proofs/verify\_p1.v}（定理 \code{p1\_sigma3p\_equiv\_literal}）。
+
+\textbf{核心直觉}：门控位 $d$ 将空间分为上层（$d=1$，编码 $\exists X$ 并于上层强制 $p=1, all\_Y$）与下层（$d=0,p=1$，编码 $\forall Y \exists Z$ 且输出 $\neg\Phi$）。若存在坏 $Y^*$ 使 $\forall Z\;\Phi(X,Y^*,Z)=0$，不公平 $T$ 可丢弃 $d$、携 $p=1$ 与 $Y^*$ 跳入下层严格包含公平 $S$。
+
+\begin{theorem}[P1 是 $\Sigma_3^P$-complete，闭合 CP 2026 第 12 页 / Proposition 27]
+判定决策 $\langle \C, \kappa, x^* \rangle$ 是否存在公平 PI-explanation（P1）是 $\Sigma_3^P$-complete。
+\end{theorem}
+\begin{proof}
+从 $\Sigma_3\text{SAT}$ 实例 $\Psi = \exists X \in \{0,1\}^r\ \forall Y \in \{0,1\}^q\ \exists Z \in \{0,1\}^s\ \Phi_{\text{3-CNF}}(X,Y,Z)=1$ 归约：
+$\N = \{d\} \cup \{X_i^+, X_i^-\}_{i<r}$，$\Prot = \{p\} \cup \{Y_j^+, Y_j^-\}_{j<q} \cup \{Z_k\}_{k<s}$，$x^* = \vec{1}$。定义 $x\_ok \equiv \bigwedge_i (X_i^+ \lor X_i^-)$，$x\_uniq \equiv \bigwedge_i (X_i^+ \oplus X_i^-)$，$y\_uniq \equiv \bigwedge_j (Y_j^+ \oplus Y_j^-)$，$all\_Y \equiv \bigwedge_j (Y_j^+ \land Y_j^-)$，以及
+\[
+  \C_{P1}(w) \equiv \begin{cases}
+    p \land all\_Y(w) & \text{若 } d=1 \land x\_ok(w),\\
+    1 & \text{若 } d=1 \land \neg x\_ok(w),\\
+    x\_uniq(w) \land y\_uniq(w) & \text{若 } d=0 \land p=1,\\
+    1 & \text{若 } d=0 \land p=0,
+  \end{cases}
+\]
+\[
+  \kappa_{P1}(w) \equiv \begin{cases}
+    x\_ok(w) & \text{若 } d=1,\\
+    \neg\Phi(X^+,Y^+,Z) & \text{若 } d=0 \land p=1,\\
+    0 & \text{若 } d=0 \land p=0.
+  \end{cases}
+\]
+上界 $\mathrm{P1} \in \Sigma_3^P$ 见 Proposition 27。由引理 1.1，只需证 $\Psi \iff$ 存在不被不公平 Weak AXp 严格包含的公平 Weak AXp。
+\begin{itemize}
+  \item \textbf{($\Rightarrow$) 若 $\Psi$ 成立}：取见证 $X$，令 $S_X = \{d\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\} \subseteq \N$（公平 Weak AXp）。反设存在不公平 Weak AXp $T$ 严格包含 $S_X$，取 $v \in \cov_T(x^*) \setminus \cov_{S_X}(x^*)$。由 $\cov_{S_X}(x^*) \subseteq \cov_T(x^*)$ 知 $\forall k,\ Z_k \notin T$ 且对每对 $(X_i^+, X_i^-)$ 不含与 $X_i$ 相悖的轨。
+  \begin{itemize}
+    \item 若 $d \in T$：为避开 $d=1, \neg x\_ok$（$\kappa=0$），$T$ 必包含 $S_X$ 中每对的选中轨，故 $v \in \cov_{S_X}(x^*)$，矛盾；
+    \item 若 $d \notin T$：考察 $w^{(0,0)} = (d=0, p=0, \vec{1})$（有效且 $\kappa_{P1}=0 \ne 1$），由 $d \notin T$ 与 $T$ 为 Weak AXp 得 \textbf{$p \in T$}。若存在 $j_0 < q$ 使 $Y_{j_0}^+, Y_{j_0}^- \in T$，因 $p \in T$ 排除 $d=0,p=0$ 且 $y\_uniq$ 排除 $d=0,p=1$，迫使 $\cov_T(x^*) \subseteq \{d=1\}$，同上导 $v \in \cov_{S_X}(x^*)$ 矛盾。故 $\forall j,\ \neg(Y_j^+ \in T \land Y_j^- \in T)$；令 $Y^*_j := \neg(Y_j^- \in T)$ 并由 $\Psi$ 取使 $\Phi(X,Y^*,Z^*)=1$ 的 $Z^*$，则 $w_{(X,Y^*,Z^*)} \in \cov_T(x^*)$ 给出 $\kappa_{P1}=0 \ne 1$，矛盾！
+  \end{itemize}
+  \item \textbf{($\Leftarrow$) 若 $x^*$ 存在性公平}：设公平 Weak AXp $S \subseteq \N$ 不被不公平 Weak AXp 严格包含。由 $w^{(0,0)}=(d=0,p=0,\vec{1})$ 得 $d \in S$，由 $d=1, X_i^+=X_i^-=0$ 得 $\forall i,\ X_i^+ \in S \lor X_i^- \in S$。令 $X_i := (X_i^+ \in S)$。若存在 $Y$ 使 $\forall Z\;\Phi(X,Y,Z)=0$，则 $T = \{p\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\} \cup \{Y_j^+ \mid Y_j^+=1\} \cup \{Y_j^- \mid Y_j=0\}$ 是不公平 Weak AXp（$p \in T$ 排除 $p=0$）且 $\cov_S(x^*) \subsetneq \cov_T(x^*)$（额外覆盖下层点 $w_{(X,Y,\vec{0})}$），矛盾！故 $\Psi$ 成立。
+\end{itemize}
+\end{proof}
+
+\section{P2（不公平 PI-解释存在性）与 P3（决策普遍性公平）的完全性证明}
+对应 Rocq 文件：\code{rocq\_proofs/verify\_p2\_p3.v}（定理 \code{p2\_sigma3p\_equiv} 与 \code{p3\_pi3p\_equiv}）。
+
+\begin{theorem}[P2 是 $\Sigma_3^P$-complete，P3 是 $\Pi_3^P$-complete]
+判定是否存在不公平 PI-explanation（P2）是 $\Sigma_3^P$-complete；其补问题决策普遍性公平（P3）是 $\Pi_3^P$-complete。
+\end{theorem}
+\begin{proof}
+复用定理 4.1 的约束、分类器与目标点（$\C_{P2}=\C_{P1},\ \kappa_{P2}=\kappa_{P1},\ x^*=\vec{1}$），仅把敏感特征集与非敏感特征集对调，令\textbf{唯一受保护特征}为 $\Prot = \{d\}$。于是 $T$ 不公平 $\iff d \in T$。
+\begin{itemize}
+  \item \textbf{($\Rightarrow$) 若 $\Psi$ 成立}：取见证 $X$，令 $T_X = \{d\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\}$。删去 $d$ 会被 $w^{(0,0)}$（$\kappa=0$）证伪，删去任意 $X_i^+/X_i^-$ 成员会被 $X_i^+=X_i^-=0$ 证伪，故 $T_X$ 是不公平 AXp；再与定理 4.1 ($\Rightarrow$) 逐字相同地，任何严格包含 $T_X$ 的 Weak AXp $S$ 均导矛盾，故 $T_X$ 是不公平 PI-explanation。
+  \item \textbf{($\Leftarrow$) 若存在不公平 PI-explanation $T$}：则 $d \in T$ 且 $\forall i<r,\ X_i^+ \in T \lor X_i^- \in T$。令 $X_i := (X_i^+ \in T)$。若存在 $Y$ 使 $\forall Z\;\Phi(X,Y,Z)=0$，则 $S = \{p\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\} \cup \{Y_j^+ \mid Y_j^+=1\} \cup \{Y_j^- \mid Y_j=0\}$ 是 Weak AXp 并由引理 1.1(1) 包含一个严格包含 $T$ 的 AXp，与 $T$ 是 PI-explanation 矛盾！
+\end{itemize}
+因 P3 是 P2 的精确补问题（\code{p3\_pi3p\_equiv}），立得 P3 为 $\Pi_3^P$-complete。
+\end{proof}
+
+\section{P5（分类器普遍性公平）的 \texorpdfstring{$\Pi_3^P$}{Pi\_3\^{}P}-完全性证明}
+对应 Rocq 文件：\code{rocq\_proofs/verify\_p5.v}（定理 \code{p5\_constrained\_ftu} 0 公理，主定理 \code{p5\_pi3p\_equiv}）。
+
+\textbf{核心技巧——$(0,0)$-吸收态非互斥编码}：为防止下层 $d=0,p=1$ 出现 $Y_j^+=1$ 与 ^-=0$ 覆盖相等导致的不公平平局，我们在 $d=0,p=1$ 改用禁止双 $1$ 约束 $x\_not11 \land y\_not11$（每对允许 $(1,0),(0,1),(0,0)$ 三态），并将 $(0,0)$ 设为 $\kappa_{P5}=0$ 的吸收态。
+
+\begin{theorem}[P5 是 $\Pi_3^P$-complete，闭合 Proposition 28 开放问题 P5]
+判定整个分类器是否满足普遍性公平（P5）是 $\Pi_3^P$-complete。
+\end{theorem}
+\begin{proof}
+设 $r \ge 1, q \ge 1$，从 $\neg\Psi \equiv \forall X \exists Y \forall Z\;\neg\Phi_{\text{3-CNF}}(X,Y,Z)=1$ 归约，令 $\Prot = \{d\}$，$\N = \{X_i^+,X_i^-\}_{i<r} \cup \{p\} \cup \{Y_j^+,Y_j^-\}_{j<q} \cup \{Z_k\}_{k<s}$，其中 $\mathrm{dummy\_body}(w) \equiv \big(\bigwedge_{i<r}(X_i^+ \land X_i^-)\big) \land \big(\bigwedge_{j<q}(\neg Y_j^+ \land \neg Y_j^-)\big) \land \big(\bigwedge_{k<s}\neg Z_k\big)$：
+\[
+  \C_{P5}(w) \equiv \begin{cases}
+    all\_Y(w) \land p & \text{若 } d=1 \land x\_ok(w),\\
+    all\_Y(w) & \text{若 } d=1 \land \neg x\_ok(w),\\
+    x\_not11(w) \land y\_not11(w) & \text{若 } d=0 \land p=1,\\
+    \mathrm{dummy\_body}(w) & \text{若 } d=0 \land p=0\ (\text{唯一 } \code{inst\_dummy}),
+  \end{cases}
+\]
+\[
+  \kappa_{P5}(w) \equiv \begin{cases}
+    x\_ok(w) & \text{若 } d=1,\\
+    0 & \text{若 } d=0 \land p=1 \land (\exists i,\ \neg X_i^+ \land \neg X_i^- \lor \exists j,\ \neg Y_j^+ \land \neg Y_j^-),\\
+    \neg\Phi(X^+, Y^+, Z) & \text{若 } d=0 \land p=1 \land x\_uniq(w) \land y\_uniq(w),\\
+    0 & \text{若 } d=0 \land p=0.
+  \end{cases}
+\]
+上界 $\mathrm{P5} \in \Pi_3^P$ 见 Proposition 28。
+
+\begin{enumerate}
+  \item \textbf{Constrained FTU 恒成立（\code{p5\_constrained\_ftu}）}：因 $q \ge 1$，$d=1 \implies (Y_0^+,Y_0^-)=(1,1)$，而 $d=0$ 无论 $p=1$ 还是 $p=0$ 均有 $\neg(Y_0^+ \land Y_0^-)$，故 $d$ 被 $\N$ 唯一决定。
+  \item \textbf{方向 1（$\neg\Psi \implies$ P5 成立）}：任取 $x \in \F[\C_{P5}]$ 与不公平 Weak AXp $T$（含 $d \in T$），分 4 类完备情形证明 $T$ 非 PI-explanation（非极小或被 Weak AXp $S$ 严格包含，再由引理 1.1(1) 得 AXp $S' \subseteq S$ 严格包含 $T$）：
+  \begin{itemize}
+    \item \textbf{情形 1（$d(x)=1, x\_ok(x)=1$，\code{neg\_three\_qbf\_case\_d1\_true}）}：对每个 $i<r$，$T$ 必含至少一个在 $x$ 上为 $1$ 的 $X_i^+$ 或 $X_i^-$。令 $X_i := (X_i^+ \in T \land X_i^+(x)=1)$，由 $\neg\Psi$ 取 $Y^*$ 使 $\forall Z\;\Phi(X,Y^*,Z)=0$，令
+    \[
+      \begin{aligned}
+        S = \{p\} &\cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\} \\
+                  &\cup \{Y_j^+ \mid Y^*_j=1\} \cup \{Y_j^- \mid Y^*_j=0\} \subseteq \N.
+      \end{aligned}
+    \]
+    $S$ 是 Weak AXp（$d=1$ 保 $x\_ok=1$；$d=0, p=1$ 结合 $x\_not11 \land y\_not11$ 与 $S$ 中的 $1$-文字强制 $x\_uniq \land y\_uniq$ 及 $X^+=X, Y^+=Y^*$，得 $\kappa_{P5}=1$）；任意 $u \in \cov_T(x)$ 有 $d(u)=1, x\_ok(u)=1 \implies p(u)=1, all\_Y(u)=1 \implies u \in \cov_S(x)$，且 $w_{(X,Y^*,\vec{0})} \in \cov_S(x) \setminus \cov_T(x)$。
+    \item \textbf{情形 2（$d(x)=1, x\_ok(x)=0$，\code{neg\_three\_qbf\_case\_d1\_false}）}：若 $p \in T \land p(x)=0$，则 $\{p\} \subsetneq T$ 在全空间恒得 $\kappa_{P5}=0$，矛盾；否则必存在 $i_0<r$ 使 $X_{i_0}^+, X_{i_0}^- \in T \land X_{i_0}^+(x)=X_{i_0}^-(x)=0$（否则把 $T$ 未固定为 $0$ 的位设为 $1$ 并置 $p=1$ 得 $\kappa=1$ 有效点），于是真子集 $\{X_{i_0}^+, X_{i_0}^-\} \subsetneq T$ 恒得 $\kappa_{P5}=0$，违背极小性。
+    \item \textbf{情形 3（$d(x)=0, p(x)=0$，即 \code{inst\_dummy}，\code{neg\_three\_qbf\_case\_d0\_p0}）}：若 $T$ 含某个 $Y_{j_0}^+$ 或 {j_0}^-$（取值为 $0$），该 $0$-文字已排斥 $d=1$，删去 $d$ 仍是 Weak AXp，矛盾；否则令公平集 $S_p=\{p\}$（Weak AXp）。若存在 $u \in \cov_T(x)$ 使 $p(u)=1$（$p \notin T$），由 $x\_not11(u)$ 与 \code{dummy} 全 $1$ 知 $T$ 不同时含某对 $(X_i^+, X_i^-)$，取 $X_i:=(X_i^+ \in T)$ 与 $\neg\Psi$ 的 $Y^*$ 得 $w_{(X,Y^*,\vec{0})} \in \cov_T(x)$（$\kappa=1 \ne 0$）矛盾。故 $\cov_T(x) \subseteq \cov_{S_p}(x)$，且 $(d=1, p=0, X^+=X^-=\vec{0}, Y^+=Y^-=\vec{1}, Z=\vec{0})$ 给出严格包含。
+    \item \textbf{情形 4（$d(x)=0, p(x)=1$，\code{neg\_three\_qbf\_case\_d0\_p1}）}：(a) 若 $T$ 含在 $x$ 上为 $0$ 的 $Y^+/Y^-$，删去 $d$ 仍是 Weak AXp；(b) 若 $\kappa(x)=1$，则 $T$ 在每对 $(X_i^+,X_i^-)$ 上必固定一个 $1$-位，删去 $d$ 自动保证 $d=1$ 上 $x\_ok=1$，矛盾；(c) 若 $\kappa(x)=0$：若 $T$ 含某 $Y_{j_0}^+$ 或 {j_0}^-$（必取 $1$，对偶位必取 $0$），令
+    \[
+      S = (T \setminus (\{d\} \cup \{Y_j^+,Y_j^-\})) \cup \{p\} \cup \{Y_j^- \mid Y_j^+ \in T\} \cup \{Y_j^+ \mid Y_j^- \in T\}.
+    \]
+    由 \code{dummy\_body} 排除 $p=0$ 与 $y\_not11$ 得 $\cov_T(x) \subseteq \cov_S(x)$；$\cov_S(x)$ 上任何点要么落在 $\cov_T(x)$ 要么落入 $(0,0)$ 吸收态（均 $\kappa=0$），且把 $(Y_{j_0}^+,Y_{j_0}^-)$ 置 $(0,0)$ 给出严格包含！若 $T$ 不含任何 $Y^+/Y^-$，则要么有 $X_{i_0}^+, X_{i_0}^- \in T \land X_{i_0}^+(x)=X_{i_0}^-(x)=0$（$\{X_{i_0}^+,X_{i_0}^-\} \subsetneq T$ 矛盾），要么由 $\neg\Psi$ 构造 $w_{(X,Y^*,Z(x))} \in \cov_T(x)$（$\kappa=1$）矛盾。
+  \end{itemize}
+  \item \textbf{方向 2（$\Psi \implies$ P5 不成立，\code{three\_qbf\_implies\_not\_cls\_univ\_fair}）}：取见证 $X$，$x^*=\vec{1}$，$T_X = \{d\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\}$。删去 $d$ 由唯一 \code{inst\_dummy} 证伪，删去 $X_i^+/X_i^-$ 由 $d=1, X_i^+=X_i^-=0$ 证伪；覆盖极大性同定理 4.1（由 $y\_not11$ 排除 $d=0,p=1$，由 \code{inst\_dummy} 排除 $d=0,p=0$）。故 $T_X$ 为不公平 PI-explanation。
+\end{enumerate}
+\end{proof}
+
+\section{P4（分类器存在性公平）的 \texorpdfstring{$\Pi_4^P$}{Pi\_4\^{}P}-完全性证明}
+对应 Rocq 文件：\code{rocq\_proofs/verify\_p4.v}（定理 \code{p4\_constrained\_ftu} 0 公理，主定理 \code{p4\_pi4p\_equiv\_literal}）。
+
+\textbf{核心技巧——「松弛护盾（Looseness Shield）」}：仅设唯一受保护特征 $\Prot = \{p^*\}$，令 $\kappa_{P4}$ 不读取 $p^*$（Constrained FTU 恒成立），并令下层 $d=0, is\_phi$ 区对 $p^* \in \{0,1\}$ 完全自由！于是下层 $is\_phi$ 区中每个点 $x$ 的公平集 $\N$ 覆盖 $\{x, x[\neg p^*]\}$，彻底免疫来自 $d=1$ 的不公平反向跳跃；同时 $d=1$ 强制 $p^*=1$，仍允许不公平 $T$ 携 $p^*=1$ 跳入下层 $p^*=1$ 分支检验 $\exists X\forall Y\exists Z\;\Phi$。
+
+\begin{theorem}[P4 是 $\Pi_4^P$-complete，闭合 Proposition 28 最终开放问题 P4]
+判定整个分类器是否满足存在性公平（P4）是 $\Pi_4^P$-complete。
+\end{theorem}
+\begin{proof}
+\textbf{归约构造}：设 $t \ge 1, r \ge 1$，从 $\Pi_4\text{SAT}$ 实例 $\Omega = \forall W \exists X \forall Y \exists Z\;\Phi_{\text{3-CNF}}(W,X,Y,Z)=1$ 归约。令 $\Prot = \{p^*\}$，$\N = \{d, q_B, z_0\} \cup \{W_k^+,W_k^-\}_{k<t} \cup \{X_i^+,X_i^-\}_{i<r} \cup \{Y_j^+,Y_j^-\}_{j<q} \cup \{Z_m\}_{m<s}$；辅助谓词 $all\_X \equiv \bigwedge_{i<r}(X_i^+ \land X_i^-)$，$is\_dummy \equiv (\neg p^*) \land w\_ok \land all\_X \land all\_Y$，$is\_phi \equiv w\_uniq \land x\_uniq \land y\_uniq$（不含 $p^*$，因 $r \ge 1$ 与 $is\_dummy$ 互斥）：
+\[
+  \small
+  \C_{P4}(w) \equiv \begin{cases}
+    p^* \land all\_Y(w) \land (\neg q_B) & \text{若 } d=1 \land (w\_ok \land x\_ok) \land (w\_uniq \land all\_X),\\
+    p^* \land all\_Y(w) \land q_B & \text{若 } d=1 \land (w\_ok \land x\_ok) \land \neg(w\_uniq \land all\_X),\\
+    p^* \land all\_Y(w) \land (\neg q_B) & \text{若 } d=1 \land \neg(w\_ok \land x\_ok),\\
+    (\neg q_B) \land (is\_dummy(w) \lor is\_phi(w)) & \text{若 } d=0,
+  \end{cases}
+\]
+\[
+  \kappa_{P4}(w) \equiv \begin{cases}
+    w\_ok(w) \land x\_ok(w) & \text{若 } d=1,\\
+    1 & \text{若 } d=0 \land is\_phi(w) \land z_0=0,\\
+    \neg\Phi(W^+, X^+, Y^+, Z) & \text{若 } d=0 \land is\_phi(w) \land z_0=1,\\
+    0 & \text{若 } d=0 \land \neg is\_phi(w).
+  \end{cases}
+\]
+上界 $\mathrm{P4} \in \Pi_4^P$ 见 Proposition 28；因 $\kappa_{P4}$ 不含 $p^*$，Constrained FTU 无条件成立（\code{p4\_constrained\_ftu}）。
+
+\textbf{方向 1（$\Omega \implies$ P4 成立）}：由引理 1.1，只需对 $\F[\C_{P4}]$ 的 6 类完备分区逐一给出不被任何不公平 Weak AXp $T$（$p^* \in T$）严格包含的公平 Weak AXp $S \subseteq \N$：
+\begin{enumerate}
+  \item \textbf{区 1（松弛护盾区：$d=0, is\_phi=1$，\code{case\_d0\_phi}）}：取 $S = \N$（公平 Weak AXp）。翻转 $p^*$ 得有效实例 $u = x[p^* := \neg p^*(x)] \in \cov_{\N}(x)$，任何含 $p^*$ 的 $T$ 均不含 $u$。
+  \item \textbf{区 2（Dummy 区：$d=0, is\_phi=0$，即 $is\_dummy=1, p^*=0, \kappa=0$，\code{case\_d0\_dummy}）}：由 $r \ge 1$ 取 $S_{\mathrm{dummy}} = \{d, X_0^+, X_0^-\}$（值 $0,1,1$，破坏 $x\_uniq$ 故 Weak AXp）。若 $T$（$p^* \in T$）严格包含 $S_{\mathrm{dummy}}$：翻转 $z_0$ 仍在 $\cov_{S_{\mathrm{dummy}}}(x)$ 中故 $z_0 \notin T$；取 $v \in \cov_T(x) \setminus \cov_{S_{\mathrm{dummy}}}(x)$，由 $p^*=0$ 得 $d(v)=0$，由破坏 $all\_X$ 得 $is\_dummy(v)=0 \implies is\_phi(v)=1$，置 $z_0=0$ 得 $v_0 \in \cov_T(x)$ 且 $\kappa=1 \ne 0$，矛盾。
+  \item \textbf{区 3a（无效门区：$d=1, w\_ok=0, \kappa=0$，\code{case\_d1\_w\_not\_ok}）}：取 $W_{k_0}^+(x)=W_{k_0}^-(x)=0$，令 $S_{w0}=\{W_{k_0}^+, W_{k_0}^-\}$。若 $T$ 严格包含 $S_{w0}$ 则遗漏 $W_{k_0}^+$ 或 $W_{k_0}^-$（不妨设 $W_{k_0}^+ \notin T$），取基底
+  \[
+    \begin{aligned}
+      u_{\mathrm{base}}=(d=1, q_B=0, z_0(x),\ & W_{k_0}^+=0, W_{k\ne k_0}^+=1, W^-=\vec{0},\\
+      & X^+=X^-=Y^+=Y^-=\vec{1}, Z(x), p^*=1) \in \cov_T(x),
+    \end{aligned}
+  \]
+  置 $W_{k_0}^+=1$ 得 $w_{\mathrm{hit}} \in \cov_T(x)$（$w\_uniq \land all\_X$，$\kappa=1$），矛盾。
+  \item \textbf{区 3b（无效门区：$d=1, w\_ok=1, x\_ok=0$，$q_B=0, p^*=1, \kappa=0$，\code{case\_d1\_x\_not\_ok}）}：取 $X_{i_0}^+(x)=X_{i_0}^-(x)=0$，令 $S_{x0}=\{d, q_B, X_{i_0}^+\}$（值 $1,0,0$，由 $all\_X=0$ 与 $q_B=0$ 强制 $\neg(w\_ok \land x\_ok)$）。设不公平 Weak AXp $T$（$p^* \in T$）严格包含 $S_{x0}$，取 $v \in \cov_T(x) \setminus \cov_{S_{x0}}(x)$：翻转 $z_0$ 得 $z_0 \notin T$，由引理 \code{unfair\_weak\_axp\_kappa0\_p1\_forces\_d1}（$p^*=1, \kappa=0, z_0 \notin T \implies d=1$）得 $d(v)=1$，故 $q_B \notin T$ 或 $X_{i_0}^+ \notin T$。在 $\cov_{S_{x0}}(x) \subseteq \cov_T(x)$ 中取双基底点：
+  \[
+    \begin{aligned}
+      u_{\mathrm{base},A} &= (d=1, q_B=0, z_0(x), W^+=\vec{1}, W^-=\vec{0}, X_{i_0}^+=X_{i_0}^-=0,\\
+      &\qquad\ X_{i\ne i_0}^+=X_{i\ne i_0}^-=1, Y^+=Y^-=\vec{1}, Z(x), p^*=1),\\
+      u_{\mathrm{base},B} &= (d=1, q_B=0, z_0(x), W^+=\vec{0}, W^-=\vec{0}, X_{i_0}^+=0, X_{i\ne i_0}^+=1,\\
+      &\qquad\ X^-=\vec{1}, Y^+=Y^-=\vec{1}, Z(x), p^*=1)
+    \end{aligned}
+  \]
+  （$u_{\mathrm{base},B}$ 依赖 $t \ge 1$ 得 $\neg w\_ok$）。于是 $T$ 与 $u_{\mathrm{base},A}$ 在 $(d, z_0, W^+, W^-, X^+, Y^+, Y^-, Z, p^*)$ 一致且与 $u_{\mathrm{base},B}$ 在 $X^-=\vec{1}$ 一致：若 $q_B \notin T$，拼合 $u_{\mathrm{base},A}$ 其余坐标、$X^-=\vec{1}$ 与 $q_B=1$ 得 $w_{\mathrm{hit}} \in \cov_T(x)$（$w\_ok \land x\_ok \land \neg all\_X$，$\kappa=1$）；若 $X_{i_0}^+ \notin T$，拼合 $u_{\mathrm{base},A}$ 其余坐标、$X^-=\vec{1}$ 与 $X_{i_0}^+=1$（$q_B=0$）得 $w_{\mathrm{hit}} \in \cov_T(x)$（$w\_uniq \land all\_X$，$\kappa=1$），均矛盾！
+  \item \textbf{区 4（辅助 $q_B=1$ 区：$d=1, w\_ok \land x\_ok=1, \neg(w\_uniq \land all\_X)$，$q_B=1, \kappa=1$，\code{case\_d1\_qB1}）}：令 $S_{qB}=\{q_B\}$（全空间唯一出现，Weak AXp）。若 $T$ 严格包含 $S_{qB}$ 则 $q_B \notin T$；置 $X_0^+=0, X_0^-=1$（$r \ge 1 \implies \neg all\_X$）后 $W_0^+, W_0^-$（$t \ge 1$）可自由翻转，故 $W_0^+, W_0^- \notin T$，将 $(q_B, W_0^+, W_0^-)$ 置 $(0,0,0)$ 得 $\kappa=0 \ne 1$，矛盾。
+  \item \textbf{区 5（目标族 $x_W$：$d=1, w\_uniq \land all\_X=1$，$q_B=0, p^*=1, \kappa=1$，\code{case\_d1\_target\_W}）}：由 $W_k:=W_k^+(x)$ 与 $\Omega$ 取见证 $X$，令 $S_{W,X}=\{d\} \cup \{W_k^+ \mid W_k=1\} \cup \{W_k^- \mid W_k=0\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\}$。若不公平 Weak AXp $T$（$p^* \in T$）严格包含 $S_{W,X}$：由 $u_{\mathrm{all1}}$（$W^+=W^-=\vec{1}, q_B=1, z_0=\neg z_0(x), Z=\neg Z(x)$）推出 $q_B, z_0, Z_m \notin T$ 且不含与 $W$ 相悖轨；由 $u_X$（$W^+=W, W^-=\neg W, X^+=X, X^-=\neg X, q_B=1$）推出不含与 $X$ 相悖轨；若 $d \in T$ 或 $\exists j_0,\ Y_{j_0}^+, Y_{j_0}^- \in T$，因 $p^* \in T$ 排除 $is\_dummy$ 故 $\cov_T(x) \subseteq \{d=1\} \implies \cov_T(x) \subseteq \cov_{S_{W,X}}(x)$ 矛盾；否则取 $Y_j := \neg(Y_j^- \in T)$ 与 $\Phi(W,X,Y,Z)=1$ 的 $Z$，得下层 $w_\phi \in \cov_T(x)$ 且 $\kappa_{P4}=0 \ne 1$，矛盾！
+\end{enumerate}
+
+\textbf{方向 2（P4 成立 $\implies \Omega$，\code{cls\_exist\_fair\_implies\_four\_qbf}）}：任取 $W$，在 $x_W=(d=1, q_B=0, z_0=1, W^+=W, W^-=\neg W, X^+=X^-=\vec{1}, Y^+=Y^-=\vec{1}, Z=\vec{1}, p^*=1)$ 处取不被不公平 Weak AXp 严格包含的公平 Weak AXp $S \subseteq \N$。将 $(d, p^*)$ 同置 $(0,0)$ 得 $y_{\mathrm{dummy},W}$（$\kappa=0$）知 $d \in S$；同理得 $S$ 锁定 $W$ 的全部 $1$-轨且 $\forall i,\ X_i^+ \in S \lor X_i^- \in S$。令 $X_i := (X_i^+ \in S)$；若存在 $Y$ 使 $\forall Z\;\Phi(W,X,Y,Z)=0$，则 $T=\{p^*\} \cup \{W_k^+ \mid W_k=1\} \cup \{W_k^- \mid W_k=0\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\} \cup \{Y_j^+ \mid Y_j^+=1\} \cup \{Y_j^- \mid Y_j=0\}$ 为不公平 Weak AXp（$p^*=1$ 排除 $is\_dummy$，强制 $is\_phi$ 且 $\kappa=1$）并严格包含 $S$（额外覆盖 $w_\phi(W,X,Y,\vec{1})$），矛盾！故 $\Omega$ 成立。
+\end{proof}
+
+\end{document}

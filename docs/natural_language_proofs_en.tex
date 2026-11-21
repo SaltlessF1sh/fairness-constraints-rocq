@@ -1,0 +1,301 @@
+% !TEX program = pdflatex
+\documentclass[11pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{geometry}
+\geometry{margin=2.1cm}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+\setlist[itemize]{itemsep=2pt,topsep=3pt,parsep=1pt}
+\setlist[enumerate]{itemsep=2pt,topsep=3pt,parsep=1pt}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+
+\newcommand{\F}{\mathbb{F}}
+\newcommand{\C}{\mathcal{C}}
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\Prot}{\mathcal{P}}
+\newcommand{\cov}{\operatorname{cov}}
+\newcommand{\code}[1]{\texttt{\small #1}}
+
+\title{\textbf{Complete Mathematical Proofs of Classifier Fairness Under Feature Constraints (P1--P7)}\\
+\large Aligned One-to-One with 5 Admitted-Free Rocq 9.0 Formal Proofs}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\noindent\fbox{\parbox{0.97\textwidth}{
+This document gives complete proofs resolving all \textbf{7 open complexity lower-bound problems (P1--P7)} posed in Sections 6--7 (Propositions 27, 28, and 31) of \textbf{Cooper \& Bousdira (CP 2026)}, \emph{``Fairness of Classifiers in the Presence of Constraints Between Features''}. Every main equivalence theorem and bridging lemma corresponds one-to-one with the 5 \textbf{Rocq (Coq 9.0)} machine-checked formalization files (0 \code{Admitted}, 0 custom axioms).
+}}
+
+\tableofcontents
+\vspace{0.6em}
+
+\section{Formal Preliminaries and Core Definitions}
+
+\subsection{Setting and Computational Model}
+Let $\mathcal{F} = \{1, \dots, n\}$ be a finite set of Boolean features partitioned into \textbf{unprotected features} $\N$ and \textbf{protected (sensitive) features} $\Prot$ ($\mathcal{F} = \N \cup \Prot$, $\N \cap \Prot = \emptyset$), over the finite Boolean hypercube $\F = \{0, 1\}^n$.
+
+\begin{itemize}
+  \item \textbf{Feature Constraints and Valid Space}: A polynomial-time decidable Boolean formula/circuit $\C : \F \to \{0, 1\}$ defines the valid instance space $\F[\C] = \{x \in \F \mid \C(x) = 1\}$.
+  \item \textbf{Classifier}: A polynomial-time computable Boolean function $\kappa : \F \to \{0, 1\}$ (following Section 7, pp.~12--13 of Cooper \& Bousdira, CP 2026).
+  \begin{itemize}
+    \item \emph{Representational Strength}: For \textbf{P1--P5}, the constructed $(\C, \kappa)$ are polynomial-size Boolean formulas/circuits; for \textbf{P6--P7}, $\C_{\mathrm{red}}$ is directly a polynomial-size \textbf{pure 5-CNF formula} and $\kappa_d$ is a \textbf{single-feature projection classifier} (a depth-1 decision tree).
+    \item \emph{Correspondence with Rocq's Finite-Domain Encoding}: Although vectors in Rocq use \code{nat -> bool}, every theorem carries \code{cnf\_bounded} / \code{dnf\_bounded} preconditions and every predicate reads only a finite coordinate prefix, making it strictly isomorphic to $\{0,1\}^N$.
+  \end{itemize}
+\end{itemize}
+
+\subsection{Explanations and Fairness Definitions (Aligned with Cooper \& Bousdira, CP 2026)}
+\begin{enumerate}
+  \item \textbf{Coverage (Section 2, p.~3)}: For $x \in \F[\C]$ and $S \subseteq \mathcal{F}$,
+  \[
+    \cov_S(x) = \{y \in \F[\C] \mid \forall i \in S,\ y_i = x_i\}.
+  \]
+  \item \textbf{Weak AXp and AXp (Definition 3)}:
+  $S \subseteq \mathcal{F}$ is a \textbf{Weak AXp} of $\langle \kappa, x \rangle$ if $\forall y \in \cov_S(x),\ \kappa(y) = \kappa(x)$; $S$ is an \textbf{AXp} if it is a $\subseteq$-minimal Weak AXp.
+  \item \textbf{Strict Subsumption and PI-Explanation (Definition 4)}:
+  $T \subseteq \mathcal{F}$ \textbf{strictly subsumes} $S \subseteq \mathcal{F}$ at $x$ (written $\cov_S(x) \subsetneq \cov_T(x)$) if $\cov_S(x) \subseteq \cov_T(x)$ and $\exists v \in \cov_T(x) \setminus \cov_S(x)$. $S$ is a \textbf{PI-explanation} if $S$ is an AXp not strictly subsumed by any AXp $T$ at $x$.
+  \item \textbf{Decision-Level Fairness (Definition 5)}:
+  $S \subseteq \mathcal{F}$ is \textbf{fair} if $S \cap \Prot = \emptyset$ ($S \subseteq \N$); otherwise \textbf{unfair}. \textbf{P1} (decision existential fairness): there exists a fair PI-explanation; \textbf{P2}: there exists an unfair PI-explanation; \textbf{P3} (decision universal fairness): all PI-explanations are fair (exact complement of P2).
+  \item \textbf{Classifier-Level Fairness (Definitions 14 \& 15)}:
+  \textbf{Constrained FTU} (Def.~14): $\forall u, v \in \F[\C],\ u|_{\N} = v|_{\N} \implies \kappa(u) = \kappa(v)$. \textbf{P4} (classifier existential fairness, Def.~15): $\forall x \in \F[\C]$, $\langle \kappa, x \rangle$ has a fair PI-explanation. \textbf{P5} (classifier universal fairness, Def.~15): $\forall x \in \F[\C]$, all PI-explanations of $\langle \kappa, x \rangle$ are fair.
+  \item \textbf{Looseness and Disentangledness (Definitions 22 \& 25)}:
+  \textbf{Looseness} (P6, Def.~22): $\forall x \in \F[\C],\ \forall p \in \Prot$, $\cov_{\N}(x) \not\subsetneq \cov_{\{p\}}(x)$. \textbf{Disentangledness} (P7, Def.~25): $\forall x \in \F[\C]$, $\N$ is a Weak AXp of $\langle \kappa, x \rangle$ not strictly subsumed by any unfair Weak AXp $Q$.
+\end{enumerate}
+
+\subsection{Key Bridging Lemma}
+\begin{lemma}[Coverage-Maximality Characterization of Weak AXps]
+\noindent\emph{Rocq correspondence: \code{weak\_axp\_has\_axp}, \code{weak\_fair\_to\_pi\_fair} / \code{dec\_exist\_fair\_at\_to\_pi}}.\\
+Over a finite feature set $\mathcal{F}$, for every valid instance $x \in \F[\C]$:
+\begin{enumerate}
+  \item If $S$ is a Weak AXp, there exists an AXp $S' \subseteq S$ satisfying $\cov_S(x) \subseteq \cov_{S'}(x)$;
+  \item $\langle \kappa, x \rangle$ has a fair PI-explanation iff \textbf{there exists a fair Weak AXp $S \subseteq \N$ not strictly subsumed by any unfair Weak AXp $T$ ($T \cap \Prot \neq \emptyset$)}.
+\end{enumerate}
+\end{lemma}
+\begin{proof}
+(1) By induction on $|S|$ over finite $\mathcal{F}$, descending to a strict subset Weak AXp whenever non-minimal, with $S' \subseteq S \implies \cov_S(x) \subseteq \cov_{S'}(x)$.\\
+(2) ($\Rightarrow$) Any fair PI-explanation $S \subseteq \N$ is a fair Weak AXp; if an unfair Weak AXp $T$ satisfied $\cov_S(x) \subsetneq \cov_T(x)$, by (1) some AXp $T' \subseteq T$ gives $\cov_S(x) \subsetneq \cov_T(x) \subseteq \cov_{T'}(x)$, contradicting that $S$ is a PI-explanation.\\
+($\Leftarrow$) Let $S \subseteq \N$ be a fair Weak AXp not strictly subsumed by any unfair Weak AXp. Over finite $\F[\C]$, pick a fair Weak AXp $S^* \subseteq \N$ maximizing $|\cov_{S^*}(x)|$ among all fair Weak AXps with $\cov_S(x) \subseteq \cov_{\hat{S}}(x)$, and by (1) take an AXp $S' \subseteq S^* \subseteq \N$. Since $\cov_{S^*}(x) \subseteq \cov_{S'}(x)$ and $S^*$ is maximal, $\cov_{S'}(x) = \cov_{S^*}(x) \supseteq \cov_S(x)$. Thus $S'$ cannot be strictly subsumed by any fair AXp (maximality of $S^*$) or by any unfair AXp $T$ (else $\cov_S(x) \subseteq \cov_{S'}(x) \subsetneq \cov_T(x)$). Hence $S'$ is a fair PI-explanation.
+\end{proof}
+
+\section{Complexity Overview (P1--P7)}
+
+\begin{center}
+\scriptsize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{@{}>{\bfseries}c p{2.4cm} l p{2.8cm} c p{4.4cm} p{2.0cm}@{}}
+\toprule
+ID & Problem & Paper Ref. & Reduction Source & Complexity & Rocq File \& Main Theorem & Axioms \\
+\midrule
+P1 & Decision Exist.\ Fair. & Def 5, P27 & $\exists X\forall Y\exists Z\ \Phi_{\text{3-CNF}}$ & $\Sigma_3^P$-comp. & \code{verify\_p1.v} (\code{p1\_sigma3p\_equiv\_literal}) & \code{classic} \\
+P2 & Unfair PI Existence & Def 4--5, P27 & $\exists X\forall Y\exists Z\ \Phi_{\text{3-CNF}}$ & $\Sigma_3^P$-comp. & \code{verify\_p2\_p3.v} (\code{p2\_sigma3p\_equiv}) & \code{classic} \\
+P3 & Decision Univ.\ Fair. & Def 5, P27 & $\forall X\exists Y\forall Z\ \neg\Phi_{\text{3-CNF}}$ & $\Pi_3^P$-comp. & \code{verify\_p2\_p3.v} (\code{p3\_pi3p\_equiv}) & \code{classic} \\
+P4 & Classifier Exist.\ Fair. & Def 15, P28 & $\forall W\exists X\forall Y\exists Z\ \Phi_{\text{3-CNF}}$ & $\Pi_4^P$-comp. & \code{verify\_p4.v} (\code{p4\_pi4p\_equiv\_literal}) & \code{classic} (\code{ftu}: 0) \\
+P5 & Classifier Univ.\ Fair. & Def 15, P28 & $\forall X\exists Y\forall Z\ \neg\Phi_{\text{3-CNF}}$ & $\Pi_3^P$-comp. & \code{verify\_p5.v} (\code{p5\_pi3p\_equiv}) & \code{classic} (\code{ftu}: 0) \\
+P6 & Looseness of $\C$ & Def 22, P31 & $\forall X\exists Z\ \neg\Phi_{\text{3-DNF}}$ & $\Pi_2^P$-comp. & \code{verify\_pi2p.v} (\code{looseness\_pi2p\_equiv}) & \textbf{0 axioms} \\
+P7 & Disentangledness & Def 25, P31 & $\forall X\exists Z\ \neg\Phi_{\text{3-DNF}}$ & $\Pi_2^P$-comp. & \code{verify\_pi2p.v} (\code{disentangled\_pi2p\_equiv}) & \textbf{0 axioms} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{\texorpdfstring{$\Pi_2^P$}{Pi\_2\^{}P}-Completeness of P6 (Looseness) and P7 (Disentangledness)}
+Rocq file: \code{rocq\_proofs/verify\_pi2p.v} (\code{looseness\_pi2p\_equiv}, \code{disentangled\_pi2p\_equiv}; constructive, 0 axioms).
+
+\textbf{Core Intuition}: Blocking $\{p^*\}$ from strictly subsuming $\N$ allows \textbf{simultaneously adjusting the other protected features $Z \in \Prot\setminus\{p^*\}$} to preserve constraint satisfaction. Placing outer 2-QBF variables $X$ in $\N$, inner variables $Z$ in $\Prot$, and a selector $d \in \N$ making $d=0$ unconstrained yields a single pure 5-CNF reduction for both P6 and P7.
+
+\begin{theorem}[P6 and P7 are $\Pi_2^P$-complete]
+Deciding looseness (P6) and disentangledness (P7) are both $\Pi_2^P$-complete, even when $\C$ is restricted to a polynomial-size pure 5-CNF formula and $\kappa$ is a single-feature projection.
+\end{theorem}
+\begin{proof}
+\textbf{Reduction}: Given a 3-DNF formula $\Phi_{\mathrm{DNF}}(X, Z)$ ($X \in \{0,1\}^r, Z \in \{0,1\}^s$, $r \ge 1$), reduce from $\forall X\exists Z\;\neg\Phi_{\mathrm{DNF}}(X,Z)=1$ ($\neg\Phi_{\mathrm{DNF}}$ is a 3-CNF). Set $\N = \{d, X_0, \dots, X_{r-1}\}$, $\Prot = \{p^*, Z_0, \dots, Z_{s-1}\}$, and
+\[
+  \C_{\mathrm{red}}(d, X, p^*, Z) \equiv (\neg d) \lor p^* \lor \neg\Phi_{\mathrm{DNF}}(X, Z), \qquad \kappa_d(d, X, p^*, Z) = d.
+\]
+The upper bounds $\mathrm{P6, P7} \in \Pi_2^P$ follow from Proposition 31.
+
+\textbf{Part I (P6 Looseness)}:
+\begin{itemize}
+  \item \textbf{($\Rightarrow$) Assume $\forall X\exists Z\;\neg\Phi_{\mathrm{DNF}}(X,Z)=1$}: Given $x \in \F[\C_{\mathrm{red}}]$ and $p \in \Prot$, construct $z \in \F[\C_{\mathrm{red}}]$ with $z|_{\N}=x|_{\N}$ and $z_p \ne x_p$:
+  (1) if $d(x)=0$, flip $p$ directly;
+  (2) if $d(x)=1, p=Z_j$, take $z=(d=1, X(x), p^*=1, Z(x)[Z_j:=\neg Z_j(x)])$;
+  (3) if $d(x)=1, p=p^*$: if $p^*(x)=0$, set $p^*=1$; if $p^*(x)=1$, pick $Z$ with $\neg\Phi_{\mathrm{DNF}}(X(x), Z)=1$ and set $p^*=0$. Hence $\{p\}$ never strictly subsumes $\N$.
+  \item \textbf{($\Leftarrow$) Assume $\exists X\,\forall Z\;\Phi_{\mathrm{DNF}}(X,Z)=1$}: Take $x = (d=1, X, p^*=1, \vec{0}) \in \F[\C_{\mathrm{red}}]$. Any $z \in \cov_{\N}(x)$ has $d(z)=1, X(z)=X$, so $\neg\Phi_{\mathrm{DNF}}(X,Z(z))=0 \implies p^*(z)=1=p^*(x)$, i.e., $\cov_{\N}(x) \subseteq \cov_{\{p^*\}}(x)$; while $y=(d=0, X, p^*=1, \vec{0}) \in \cov_{\{p^*\}}(x) \setminus \cov_{\N}(x)$. Thus $\C_{\mathrm{red}}$ is not loose.
+\end{itemize}
+
+\textbf{Part II (P7 Disentangledness, $r \ge 1$)}: Since $\kappa_d(w)=d(w)$ and $d \in \N$, $\N$ is always a Weak AXp.
+\begin{itemize}
+  \item \textbf{($\Rightarrow$)} If an unfair Weak AXp $Q$ strictly subsumed $\N$ at some $x$, taking $p \in Q \cap \Prot$ gives $\cov_{\N}(x) \subsetneq \cov_Q(x) \subseteq \cov_{\{p\}}(x)$, contradicting P6.
+  \item \textbf{($\Leftarrow$)} Take $x=(d=1, X, p^*=1, \vec{0})$ and $Q=\{d, p^*\}$. $Q$ is a Weak AXp since $d \in Q$, and every $z \in \cov_{\N}(x)$ has $d(z)=1, p^*(z)=1 \implies \cov_{\N}(x) \subseteq \cov_Q(x)$; since $r \ge 1$, $y=(d=1, X[X_0:=\neg X_0], p^*=1, \vec{0}) \in \cov_Q(x) \setminus \cov_{\N}(x)$. Thus $\kappa_d$ is not disentangled.
+\end{itemize}
+\end{proof}
+
+\section{\texorpdfstring{$\Sigma_3^P$}{Sigma\_3\^{}P}-Completeness of P1 (Decision Existential Fairness)}
+Rocq file: \code{rocq\_proofs/verify\_p1.v} (\code{p1\_sigma3p\_equiv\_literal}).
+
+\textbf{Core Intuition}: The selector $d$ splits the space into an upper layer ($d=1$, encoding $\exists X$ and forcing $p=1, all\_Y$) and a lower layer ($d=0,p=1$, encoding $\forall Y \exists Z$ and outputting $\neg\Phi$). A bad $Y^*$ with $\forall Z\;\Phi(X,Y^*,Z)=0$ lets an unfair $T$ drop $d$, carry $p=1$ and $Y^*$, and jump into the lower layer to strictly subsume $S$.
+
+\begin{theorem}[P1 is $\Sigma_3^P$-complete, closing p.~12 / Proposition 27 of CP 2026]
+Deciding whether $\langle \C, \kappa, x^* \rangle$ has a fair PI-explanation (P1) is $\Sigma_3^P$-complete.
+\end{theorem}
+\begin{proof}
+Reduce from $\Psi = \exists X \in \{0,1\}^r\ \forall Y \in \{0,1\}^q\ \exists Z \in \{0,1\}^s\ \Phi_{\text{3-CNF}}(X,Y,Z)=1$:
+$\N = \{d\} \cup \{X_i^+, X_i^-\}_{i<r}$, $\Prot = \{p\} \cup \{Y_j^+, Y_j^-\}_{j<q} \cup \{Z_k\}_{k<s}$, $x^* = \vec{1}$. Define $x\_ok \equiv \bigwedge_i (X_i^+ \lor X_i^-)$, $x\_uniq \equiv \bigwedge_i (X_i^+ \oplus X_i^-)$, $y\_uniq \equiv \bigwedge_j (Y_j^+ \oplus Y_j^-)$, $all\_Y \equiv \bigwedge_j (Y_j^+ \land Y_j^-)$, and
+\[
+  \C_{P1}(w) \equiv \begin{cases}
+    p \land all\_Y(w) & \text{if } d=1 \land x\_ok(w),\\
+    1 & \text{if } d=1 \land \neg x\_ok(w),\\
+    x\_uniq(w) \land y\_uniq(w) & \text{if } d=0 \land p=1,\\
+    1 & \text{if } d=0 \land p=0,
+  \end{cases}
+\]
+\[
+  \kappa_{P1}(w) \equiv \begin{cases}
+    x\_ok(w) & \text{if } d=1,\\
+    \neg\Phi(X^+,Y^+,Z) & \text{if } d=0 \land p=1,\\
+    0 & \text{if } d=0 \land p=0.
+  \end{cases}
+\]
+Upper bound $\mathrm{P1} \in \Sigma_3^P$ is Proposition 27. By Lemma 1.1, we show $\Psi \iff$ existence of a fair Weak AXp not strictly subsumed by any unfair Weak AXp.
+\begin{itemize}
+  \item \textbf{($\Rightarrow$) Assume $\Psi$}: Pick witness $X$ and set $S_X = \{d\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\} \subseteq \N$ (a fair Weak AXp). Suppose an unfair Weak AXp $T$ strictly subsumes $S_X$, and take $v \in \cov_T(x^*) \setminus \cov_{S_X}(x^*)$. From $\cov_{S_X}(x^*) \subseteq \cov_T(x^*)$, $\forall k,\ Z_k \notin T$ and $T$ contains no unselected rail of $(X_i^+, X_i^-)$.
+  \begin{itemize}
+    \item If $d \in T$: avoiding $d=1, \neg x\_ok$ ($\kappa=0$) forces $S_X \subseteq T$, giving $v \in \cov_{S_X}(x^*)$, contradiction;
+    \item If $d \notin T$: witness $w^{(0,0)} = (d=0, p=0, \vec{1})$ ($\kappa_{P1}=0 \ne 1$) forces \textbf{$p \in T$}. If $Y_{j_0}^+, Y_{j_0}^- \in T$ for some $j_0 < q$, then $p \in T$ rules out $d=0,p=0$ and $y\_uniq$ rules out $d=0,p=1$, trapping $\cov_T(x^*)$ in $\{d=1\}$ and again forcing $v \in \cov_{S_X}(x^*)$, contradiction. Thus $\forall j,\ \neg(Y_j^+ \in T \land Y_j^- \in T)$; setting $Y^*_j := \neg(Y_j^- \in T)$ and picking $Z^*$ with $\Phi(X,Y^*,Z^*)=1$ yields $w_{(X,Y^*,Z^*)} \in \cov_T(x^*)$ with $\kappa_{P1}=0 \ne 1$, contradiction.
+  \end{itemize}
+  \item \textbf{($\Leftarrow$) Assume $x^*$ is existentially fair}: Let fair Weak AXp $S \subseteq \N$ not be strictly subsumed by any unfair Weak AXp. Using $w^{(0,0)}=(d=0,p=0,\vec{1})$ gives $d \in S$, and $d=1, X_i^+=X_i^-=0$ gives $\forall i,\ X_i^+ \in S \lor X_i^- \in S$. Set $X_i := (X_i^+ \in S)$. If $\exists Y\,\forall Z\;\Phi(X,Y,Z)=0$, then $T = \{p\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\} \cup \{Y_j^+ \mid Y_j=1\} \cup \{Y_j^- \mid Y_j=0\}$ is an unfair Weak AXp ($p \in T$ excludes $p=0$) with $\cov_S(x^*) \subsetneq \cov_T(x^*)$ (covering $w_{(X,Y,\vec{0})}$), contradiction. Hence $\Psi$ holds.
+\end{itemize}
+\end{proof}
+
+\section{Completeness of P2 (Unfair PI Existence) and P3 (Decision Universal Fairness)}
+Rocq file: \code{rocq\_proofs/verify\_p2\_p3.v} (\code{p2\_sigma3p\_equiv}, \code{p3\_pi3p\_equiv}).
+
+\begin{theorem}[P2 is $\Sigma_3^P$-complete and P3 is $\Pi_3^P$-complete]
+Deciding whether a decision has an unfair PI-explanation (P2) is $\Sigma_3^P$-complete; its complement, decision universal fairness (P3), is $\Pi_3^P$-complete.
+\end{theorem}
+\begin{proof}
+Reuse $\C_{P2}=\C_{P1}$, $\kappa_{P2}=\kappa_{P1}$, and $x^*=\vec{1}$, swapping the feature partition so that $\Prot = \{d\}$ is the \textbf{unique protected feature}. Thus $T$ is unfair $\iff d \in T$.
+\begin{itemize}
+  \item \textbf{($\Rightarrow$) Assume $\Psi$}: Pick witness $X$ and let $T_X = \{d\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\}$. Removing $d$ is refuted by $w^{(0,0)}$ ($\kappa=0$) and removing any $X_i^+/X_i^-$ is refuted by $X_i^+=X_i^-=0$, so $T_X$ is an unfair AXp; verbatim as in Theorem 4.1 ($\Rightarrow$), no Weak AXp $S$ strictly subsumes $T_X$, so $T_X$ is an unfair PI-explanation.
+  \item \textbf{($\Leftarrow$) Assume an unfair PI-explanation $T$}: Then $d \in T$ and $\forall i<r,\ X_i^+ \in T \lor X_i^- \in T$. Set $X_i := (X_i^+ \in T)$. If $\exists Y\,\forall Z\;\Phi(X,Y,Z)=0$, then $S = \{p\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\} \cup \{Y_j^+ \mid Y_j=1\} \cup \{Y_j^- \mid Y_j=0\}$ is a Weak AXp and by Lemma 1.1(1) contains an AXp strictly subsuming $T$, contradicting that $T$ is a PI-explanation.
+\end{itemize}
+Since P3 is the exact complement of P2 (\code{p3\_pi3p\_equiv}), P3 is $\Pi_3^P$-complete.
+\end{proof}
+
+\section{\texorpdfstring{$\Pi_3^P$}{Pi\_3\^{}P}-Completeness of P5 (Classifier Universal Fairness)}
+Rocq file: \code{rocq\_proofs/verify\_p5.v} (\code{p5\_constrained\_ftu} with 0 axioms; \code{p5\_pi3p\_equiv}).
+
+\textbf{Core Technique — $(0,0)$-Absorbing Non-Exclusive Encoding}: To prevent ties in coverage between $Y_j^+=1$ and $Y_j^-=0$ on $d=0,p=1$, we enforce only the no-double-$1$ constraint $x\_not11 \land y\_not11$ (allowing $(1,0),(0,1),(0,0)$ per pair) and set $(0,0)$ as an absorbing state with $\kappa_{P5}=0$.
+
+\begin{theorem}[P5 is $\Pi_3^P$-complete, closing Open Problem P5 in Proposition 28]
+Deciding whether a classifier satisfies universal fairness (P5) is $\Pi_3^P$-complete.
+\end{theorem}
+\begin{proof}
+Assume $r \ge 1, q \ge 1$. Reduce from $\neg\Psi \equiv \forall X \exists Y \forall Z\;\neg\Phi_{\text{3-CNF}}(X,Y,Z)=1$, with $\Prot = \{d\}$, $\N = \{X_i^+,X_i^-\}_{i<r} \cup \{p\} \cup \{Y_j^+,Y_j^-\}_{j<q} \cup \{Z_k\}_{k<s}$, and $\mathrm{dummy\_body}(w) \equiv \big(\bigwedge_{i<r}(X_i^+ \land X_i^-)\big) \land \big(\bigwedge_{j<q}(\neg Y_j^+ \land \neg Y_j^-)\big) \land \big(\bigwedge_{k<s}\neg Z_k\big)$:
+\[
+  \C_{P5}(w) \equiv \begin{cases}
+    all\_Y(w) \land p & \text{if } d=1 \land x\_ok(w),\\
+    all\_Y(w) & \text{if } d=1 \land \neg x\_ok(w),\\
+    x\_not11(w) \land y\_not11(w) & \text{if } d=0 \land p=1,\\
+    \mathrm{dummy\_body}(w) & \text{if } d=0 \land p=0\ (\text{unique } \code{inst\_dummy}),
+  \end{cases}
+\]
+\[
+  \kappa_{P5}(w) \equiv \begin{cases}
+    x\_ok(w) & \text{if } d=1,\\
+    0 & \text{if } d=0 \land p=1 \land (\exists i,\ \neg X_i^+ \land \neg X_i^- \lor \exists j,\ \neg Y_j^+ \land \neg Y_j^-),\\
+    \neg\Phi(X^+, Y^+, Z) & \text{if } d=0 \land p=1 \land x\_uniq(w) \land y\_uniq(w),\\
+    0 & \text{if } d=0 \land p=0.
+  \end{cases}
+\]
+Upper bound $\mathrm{P5} \in \Pi_3^P$ is Proposition 28.
+
+\begin{enumerate}
+  \item \textbf{Constrained FTU holds (\code{p5\_constrained\_ftu})}: Since $q \ge 1$, $d=1 \implies (Y_0^+,Y_0^-)=(1,1)$, while $d=0$ always enforces $\neg(Y_0^+ \land Y_0^-)$, so $d$ is uniquely determined by $\N$.
+  \item \textbf{Direction 1 ($\neg\Psi \implies$ P5 holds)}: For any $x \in \F[\C_{P5}]$ and unfair Weak AXp $T$ ($d \in T$), 4 exhaustive cases show $T$ is not a PI-explanation (non-minimal or strictly subsumed by a Weak AXp $S$, hence by an AXp $S' \subseteq S$ via Lemma 1.1(1)):
+  \begin{itemize}
+    \item \textbf{Case 1 ($d(x)=1, x\_ok(x)=1$, \code{neg\_three\_qbf\_case\_d1\_true})}: For each $i<r$, $T$ contains at least one of $X_i^+, X_i^-$ evaluating to $1$ at $x$. Set $X_i := (X_i^+ \in T \land X_i^+(x)=1)$, pick $Y^*$ via $\neg\Psi$ with $\forall Z\;\Phi(X,Y^*,Z)=0$, and set
+    \[
+      S = \{p\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\} \cup \{Y_j^+ \mid Y^*_j=1\} \cup \{Y_j^- \mid Y^*_j=0\} \subseteq \N.
+    \]
+    $S$ is a Weak AXp ($d=1$ ensures $x\_ok=1$; $d=0, p=1$ with $x\_not11 \land y\_not11$ and $S$ forces $x\_uniq \land y\_uniq$ and $X^+=X, Y^+=Y^*$, so $\kappa_{P5}=1$); every $u \in \cov_T(x)$ has $d(u)=1, x\_ok(u)=1 \implies p(u)=1, all\_Y(u)=1 \implies u \in \cov_S(x)$, and $w_{(X,Y^*,\vec{0})} \in \cov_S(x) \setminus \cov_T(x)$.
+    \item \textbf{Case 2 ($d(x)=1, x\_ok(x)=0$, \code{neg\_three\_qbf\_case\_d1\_false})}: If $p \in T \land p(x)=0$, then $\{p\} \subsetneq T$ gives $\kappa_{P5}=0$ globally, contradiction; else some $i_0<r$ has $X_{i_0}^+, X_{i_0}^- \in T \land X_{i_0}^+(x)=X_{i_0}^-(x)=0$ (otherwise setting unfixed rails to $1$ and $p=1$ gives a valid $\kappa=1$ point), so $\{X_{i_0}^+, X_{i_0}^-\} \subsetneq T$ gives $\kappa_{P5}=0$ globally, contradicting minimality.
+    \item \textbf{Case 3 ($d(x)=0, p(x)=0$, i.e., \code{inst\_dummy}, \code{neg\_three\_qbf\_case\_d0\_p0})}: If $T$ contains some $Y_{j_0}^+$ or $Y_{j_0}^-$ (value $0$), this excludes $d=1$, so $T \setminus \{d\}$ remains a Weak AXp; else take fair $S_p=\{p\}$ (a Weak AXp). If some $u \in \cov_T(x)$ had $p(u)=1$ ($p \notin T$), then $x\_not11(u)$ and \code{dummy} having all $1$s on $X^+/X^-$ imply $T$ never contains both $X_i^+, X_i^-$; setting $X_i:=(X_i^+ \in T)$ and picking $Y^*$ via $\neg\Psi$ yields $w_{(X,Y^*,\vec{0})} \in \cov_T(x)$ ($\kappa=1 \ne 0$), contradiction. Hence $\cov_T(x) \subseteq \cov_{S_p}(x)$, and $(d=1, p=0, X^+=X^-=\vec{0}, Y^+=Y^-=\vec{1}, Z=\vec{0})$ gives strict subsumption.
+    \item \textbf{Case 4 ($d(x)=0, p(x)=1$, \code{neg\_three\_qbf\_case\_d0\_p1})}: (a) If $T$ contains a $0$-valued $Y_j^+/Y_j^-$, drop $d$; (b) if $\kappa(x)=1$, $T$ fixes one $1$-rail in every pair $(X_i^+, X_i^-)$, so dropping $d$ still guarantees $x\_ok=1$ on $d=1$; (c) if $\kappa(x)=0$: if $T$ contains some $Y_{j_0}^+$ or $Y_{j_0}^-$ (value $1$, dual rail $0$), set
+    \[
+      S = (T \setminus (\{d\} \cup \{Y_j^+,Y_j^-\})) \cup \{p\} \cup \{Y_j^- \mid Y_j^+ \in T\} \cup \{Y_j^+ \mid Y_j^- \in T\}.
+    \]
+    Using \code{dummy\_body} (excludes $p=0$) and $y\_not11$ gives $\cov_T(x) \subseteq \cov_S(x)$; every point in $\cov_S(x)$ either lies in $\cov_T(x)$ or hits $(0,0)$ ($\kappa=0$ in both cases), and setting $(Y_{j_0}^+,Y_{j_0}^-)=(0,0)$ proves strict subsumption. If $T$ contains no $Y_j^+/Y_j^-$, either some $X_{i_0}^+, X_{i_0}^- \in T$ with $X_{i_0}^+(x)=X_{i_0}^-(x)=0$ ($\{X_{i_0}^+,X_{i_0}^-\} \subsetneq T$ contradicts minimality), or $\neg\Psi$ constructs $w_{(X,Y^*,Z(x))} \in \cov_T(x)$ ($\kappa=1$), contradiction.
+  \end{itemize}
+  \item \textbf{Direction 2 ($\Psi \implies$ P5 fails, \code{three\_qbf\_implies\_not\_cls\_univ\_fair})}: Take witness $X$, $x^*=\vec{1}$, and $T_X = \{d\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\}$. Dropping $d$ is refuted by \code{inst\_dummy} and dropping $X_i^+/X_i^-$ by $d=1, X_i^+=X_i^-=0$; coverage maximality follows as in Theorem 4.1 ($y\_not11$ excludes $d=0,p=1$ and \code{inst\_dummy} excludes $d=0,p=0$). Thus $T_X$ is an unfair PI-explanation.
+\end{enumerate}
+\end{proof}
+
+\section{\texorpdfstring{$\Pi_4^P$}{Pi\_4\^{}P}-Completeness of P4 (Classifier Existential Fairness)}
+Rocq file: \code{rocq\_proofs/verify\_p4.v} (\code{p4\_constrained\_ftu} with 0 axioms; \code{p4\_pi4p\_equiv\_literal}).
+
+\textbf{Core Technique — ``Looseness Shield''}: We use a single protected feature $\Prot = \{p^*\}$, keep $\kappa_{P4}$ independent of $p^*$ (Constrained FTU holds unconditionally), and leave $p^* \in \{0,1\}$ completely free on the lower $d=0, is\_phi$ region. Thus $\N$ covers $\{x, x[\neg p^*]\}$ at every $is\_phi$ point, blocking reverse unfair jumps from $d=1$, while $d=1$ enforces $p^*=1$ so unfair $T$ can still jump into the $p^*=1$ branch of $is\_phi$ to test $\exists X\forall Y\exists Z\;\Phi$.
+
+\begin{theorem}[P4 is $\Pi_4^P$-complete, closing the final open problem P4 in Proposition 28]
+Deciding whether a classifier satisfies existential fairness (P4) is $\Pi_4^P$-complete.
+\end{theorem}
+\begin{proof}
+\textbf{Reduction}: Assume $t \ge 1, r \ge 1$, and reduce from $\Omega = \forall W \exists X \forall Y \exists Z\;\Phi_{\text{3-CNF}}(W,X,Y,Z)=1$. Set $\Prot = \{p^*\}$, $\N = \{d, q_B, z_0\} \cup \{W_k^+,W_k^-\}_{k<t} \cup \{X_i^+,X_i^-\}_{i<r} \cup \{Y_j^+,Y_j^-\}_{j<q} \cup \{Z_m\}_{m<s}$, $all\_X \equiv \bigwedge_{i<r}(X_i^+ \land X_i^-)$, $is\_dummy \equiv (\neg p^*) \land w\_ok \land all\_X \land all\_Y$, and $is\_phi \equiv w\_uniq \land x\_uniq \land y\_uniq$ (independent of $p^*$, disjoint from $is\_dummy$ as $r \ge 1$):
+{\small
+\[
+  \C_{P4}(w) \equiv \begin{cases}
+    p^* \land all\_Y(w) \land (\neg q_B) & \text{if } d=1 \land (w\_ok \land x\_ok) \land (w\_uniq \land all\_X),\\
+    p^* \land all\_Y(w) \land q_B & \text{if } d=1 \land (w\_ok \land x\_ok) \land \neg(w\_uniq \land all\_X),\\
+    p^* \land all\_Y(w) \land (\neg q_B) & \text{if } d=1 \land \neg(w\_ok \land x\_ok),\\
+    (\neg q_B) \land (is\_dummy(w) \lor is\_phi(w)) & \text{if } d=0,
+  \end{cases}
+\]
+}
+\[
+  \kappa_{P4}(w) \equiv \begin{cases}
+    w\_ok(w) \land x\_ok(w) & \text{if } d=1,\\
+    1 & \text{if } d=0 \land is\_phi(w) \land z_0=0,\\
+    \neg\Phi(W^+, X^+, Y^+, Z) & \text{if } d=0 \land is\_phi(w) \land z_0=1,\\
+    0 & \text{if } d=0 \land \neg is\_phi(w).
+  \end{cases}
+\]
+Upper bound $\mathrm{P4} \in \Pi_4^P$ is Proposition 28; since $\kappa_{P4}$ omits $p^*$, Constrained FTU holds unconditionally (\code{p4\_constrained\_ftu}).
+
+\textbf{Direction 1 ($\Omega \implies$ P4 holds)}: By Lemma 1.1, we provide in each of 6 exhaustive regions of $\F[\C_{P4}]$ a fair Weak AXp $S \subseteq \N$ not strictly subsumed by any unfair Weak AXp $T$ ($p^* \in T$):
+\begin{enumerate}
+  \item \textbf{Region 1 ($d=0, is\_phi=1$, \code{case\_d0\_phi})}: Take $S = \N$ (fair Weak AXp by FTU). Flipping $p^*$ gives valid $u = x[p^* := \neg p^*(x)] \in \cov_{\N}(x) \setminus \cov_T(x)$.
+  \item \textbf{Region 2 ($d=0, is\_phi=0$, i.e., $is\_dummy=1, p^*=0, \kappa=0$, \code{case\_d0\_dummy})}: Using $r \ge 1$, take $S_{\mathrm{dummy}} = \{d, X_0^+, X_0^-\}$ (values $0,1,1$, violating $x\_uniq$). If $T$ ($p^* \in T$) strictly subsumes $S_{\mathrm{dummy}}$: flipping $z_0$ shows $z_0 \notin T$; for $v \in \cov_T(x) \setminus \cov_{S_{\mathrm{dummy}}}(x)$, $p^*=0$ gives $d(v)=0$, violating $all\_X$ gives $is\_dummy(v)=0 \implies is\_phi(v)=1$, and setting $z_0=0$ gives $v_0 \in \cov_T(x)$ with $\kappa=1 \ne 0$, contradiction.
+  \item \textbf{Region 3a ($d=1, w\_ok=0, \kappa=0$, \code{case\_d1\_w\_not\_ok})}: Pick $W_{k_0}^+(x)=W_{k_0}^-(x)=0$ and set $S_{w0}=\{W_{k_0}^+, W_{k_0}^-\}$. If $T$ strictly subsumes $S_{w0}$, WLOG $W_{k_0}^+ \notin T$; taking
+  \[
+    \begin{aligned}
+      u_{\mathrm{base}}=(d=1, q_B=0, z_0(x),\ & W_{k_0}^+=0, W_{k\ne k_0}^+=1, W^-=\vec{0},\\
+      & X^+=X^-=Y^+=Y^-=\vec{1}, Z(x), p^*=1) \in \cov_T(x)
+    \end{aligned}
+  \]
+  and setting $W_{k_0}^+=1$ yields $w_{\mathrm{hit}} \in \cov_T(x)$ ($w\_uniq \land all\_X$, $\kappa=1$), contradiction.
+  \item \textbf{Region 3b ($d=1, w\_ok=1, x\_ok=0$, $q_B=0, p^*=1, \kappa=0$, \code{case\_d1\_x\_not\_ok})}: Pick $X_{i_0}^+(x)=X_{i_0}^-(x)=0$ and set $S_{x0}=\{d, q_B, X_{i_0}^+\}$ (values $1,0,0$, forcing $\neg(w\_ok \land x\_ok)$ via $all\_X=0$ and $q_B=0$). If unfair Weak AXp $T$ ($p^* \in T$) strictly subsumes $S_{x0}$ with $v \in \cov_T(x) \setminus \cov_{S_{x0}}(x)$: flipping $z_0$ gives $z_0 \notin T$, lemma \code{unfair\_weak\_axp\_kappa0\_p1\_forces\_d1} ($p^*=1, \kappa=0, z_0 \notin T \implies d=1$) gives $d(v)=1$, so $q_B \notin T$ or $X_{i_0}^+ \notin T$. Take two base points in $\cov_{S_{x0}}(x) \subseteq \cov_T(x)$:
+  \[
+    \begin{aligned}
+      u_{\mathrm{base},A} &= (d=1, q_B=0, z_0(x), W^+=\vec{1}, W^-=\vec{0}, X_{i_0}^+=X_{i_0}^-=0,\\
+      &\qquad\ X_{i\ne i_0}^+=X_{i\ne i_0}^-=1, Y^+=Y^-=\vec{1}, Z(x), p^*=1),\\
+      u_{\mathrm{base},B} &= (d=1, q_B=0, z_0(x), W^+=\vec{0}, W^-=\vec{0}, X_{i_0}^+=0, X_{i\ne i_0}^+=1,\\
+      &\qquad\ X^-=\vec{1}, Y^+=Y^-=\vec{1}, Z(x), p^*=1)
+    \end{aligned}
+  \]
+  ($u_{\mathrm{base},B}$ uses $t \ge 1$ for $\neg w\_ok$). Splicing $u_{\mathrm{base},A}$'s remaining coordinates with $X^-=\vec{1}$ from $u_{\mathrm{base},B}$ gives $w_{\mathrm{hit}} \in \cov_T(x)$ with $\kappa=1$: setting $q_B=1$ if $q_B \notin T$ ($w\_ok \land x\_ok \land \neg all\_X$), or setting $X_{i_0}^+=1$ ($q_B=0$) if $X_{i_0}^+ \notin T$ ($w\_uniq \land all\_X$), contradiction.
+  \item \textbf{Region 4 ($d=1, w\_ok \land x\_ok=1, \neg(w\_uniq \land all\_X)$, $q_B=1, \kappa=1$, \code{case\_d1\_qB1})}: Set $S_{qB}=\{q_B\}$ (globally unique to this region, Weak AXp). If $T$ strictly subsumes $S_{qB}$, then $q_B \notin T$; setting $X_0^+=0, X_0^-=1$ ($r \ge 1 \implies \neg all\_X$) frees $W_0^+, W_0^-$ ($t \ge 1$), so $W_0^+, W_0^- \notin T$, and setting $(q_B, W_0^+, W_0^-)=(0,0,0)$ yields $\kappa=0 \ne 1$, contradiction.
+  \item \textbf{Region 5 ($d=1, w\_uniq \land all\_X=1$, $q_B=0, p^*=1, \kappa=1$, \code{case\_d1\_target\_W})}: Set $W_k:=W_k^+(x)$, pick $X$ via $\Omega$, and form $S_{W,X}=\{d\} \cup \{W_k^+ \mid W_k=1\} \cup \{W_k^- \mid W_k=0\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\}$. If unfair Weak AXp $T$ ($p^* \in T$) strictly subsumes $S_{W,X}$: witness $u_{\mathrm{all1}}$ ($W^+=W^-=\vec{1}, q_B=1, z_0=\neg z_0(x), Z=\neg Z(x)$) gives $q_B, z_0, Z_m \notin T$ and no rail contradicting $W$; witness $u_X$ ($W^+=W, W^-=\neg W, X^+=X, X^-=\neg X, q_B=1$) gives no rail contradicting $X$; if $d \in T$ or $\exists j_0,\ Y_{j_0}^+, Y_{j_0}^- \in T$, $p^* \in T$ excludes $is\_dummy$ so $\cov_T(x) \subseteq \{d=1\} \implies \cov_T(x) \subseteq \cov_{S_{W,X}}(x)$, contradiction; else $Y_j := \neg(Y_j^- \in T)$ and $Z$ from $\Phi(W,X,Y,Z)=1$ yield $w_\phi \in \cov_T(x)$ with $\kappa_{P4}=0 \ne 1$, contradiction.
+\end{enumerate}
+
+\textbf{Direction 2 (P4 holds $\implies \Omega$, \code{cls\_exist\_fair\_implies\_four\_qbf})}: Given $W$, take $x_W=(d=1, q_B=0, z_0=1, W^+=W, W^-=\neg W, X^+=X^-=\vec{1}, Y^+=Y^-=\vec{1}, Z=\vec{1}, p^*=1)$ and a fair Weak AXp $S \subseteq \N$ not strictly subsumed by any unfair Weak AXp. Setting $(d, p^*)=(0,0)$ gives $y_{\mathrm{dummy},W}$ ($\kappa=0$) forcing $d \in S$; similarly $S$ locks every $1$-rail of $W$ and satisfies $\forall i,\ X_i^+ \in S \lor X_i^- \in S$. Set $X_i := (X_i^+ \in S)$; if $\exists Y\,\forall Z\;\Phi(W,X,Y,Z)=0$, then $T=\{p^*\} \cup \{W_k^+ \mid W_k=1\} \cup \{W_k^- \mid W_k=0\} \cup \{X_i^+ \mid X_i=1\} \cup \{X_i^- \mid X_i=0\} \cup \{Y_j^+ \mid Y_j=1\} \cup \{Y_j^- \mid Y_j=0\}$ is an unfair Weak AXp ($p^*=1$ excludes $is\_dummy$, forcing $is\_phi$ and $\kappa=1$) strictly subsuming $S$ (covering $w_\phi(W,X,Y,\vec{1})$), contradiction. Hence $\Omega$ holds.
+\end{proof}
+
+\end{document}
